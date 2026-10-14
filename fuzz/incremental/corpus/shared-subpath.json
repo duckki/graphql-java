@@ -1,0 +1,150 @@
+{
+  "format": 1,
+  "fixtureName": "shared-subpath",
+  "input": {
+    "seed": 0,
+    "selections": [
+      {
+        "kind": "field",
+        "name": "users",
+        "responseName": "users",
+        "selections": [
+          {
+            "kind": "field",
+            "name": "id",
+            "responseName": "id",
+            "selections": [],
+            "directives": []
+          }
+        ],
+        "directives": []
+      },
+      {
+        "kind": "fragment",
+        "selections": [
+          {
+            "kind": "field",
+            "name": "users",
+            "responseName": "users",
+            "selections": [
+              {
+                "kind": "field",
+                "name": "name",
+                "responseName": "name",
+                "selections": [],
+                "directives": []
+              }
+            ],
+            "directives": []
+          }
+        ],
+        "directives": [
+          {
+            "name": "defer",
+            "if": true,
+            "label": "names"
+          }
+        ]
+      }
+    ],
+    "root": {
+      "__typename": "Query",
+      "a": "A",
+      "b": "B",
+      "required": "R",
+      "values": [
+        "x",
+        "y"
+      ],
+      "strictValues": [
+        "x",
+        "y"
+      ],
+      "user": {
+        "__typename": "Item",
+        "id": "id",
+        "name": "name",
+        "required": "required",
+        "values": [
+          "x",
+          "y"
+        ],
+        "strictValues": [
+          "x",
+          "y"
+        ],
+        "friend": null,
+        "friends": []
+      },
+      "users": [
+        {
+          "__typename": "Item",
+          "id": "id",
+          "name": "name",
+          "required": "required",
+          "values": [
+            "x",
+            "y"
+          ],
+          "strictValues": [
+            "x",
+            "y"
+          ],
+          "friend": null,
+          "friends": []
+        },
+        {
+          "__typename": "Item",
+          "id": "id",
+          "name": "name",
+          "required": "required",
+          "values": [
+            "x",
+            "y"
+          ],
+          "strictValues": [
+            "x",
+            "y"
+          ],
+          "friend": null,
+          "friends": []
+        }
+      ],
+      "strictUsers": [
+        {
+          "__typename": "Item",
+          "id": "id",
+          "name": "name",
+          "required": "required",
+          "values": [
+            "x",
+            "y"
+          ],
+          "strictValues": [
+            "x",
+            "y"
+          ],
+          "friend": null,
+          "friends": []
+        },
+        {
+          "__typename": "Item",
+          "id": "id",
+          "name": "name",
+          "required": "required",
+          "values": [
+            "x",
+            "y"
+          ],
+          "strictValues": [
+            "x",
+            "y"
+          ],
+          "friend": null,
+          "friends": []
+        }
+      ]
+    },
+    "variables": {}
+  }
+}

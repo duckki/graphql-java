@@ -1,0 +1,136 @@
+{
+  "format": 1,
+  "fixtureName": "prior-errors-defer",
+  "input": {
+    "seed": 0,
+    "selections": [
+      {
+        "kind": "fragment",
+        "selections": [
+          {
+            "kind": "field",
+            "name": "a",
+            "responseName": "a",
+            "selections": [],
+            "directives": []
+          },
+          {
+            "kind": "field",
+            "name": "required",
+            "responseName": "required",
+            "selections": [],
+            "directives": []
+          }
+        ],
+        "directives": [
+          {
+            "name": "defer",
+            "if": true,
+            "label": "failure"
+          }
+        ]
+      }
+    ],
+    "root": {
+      "__typename": "Query",
+      "a": {
+        "$error": true
+      },
+      "b": "B",
+      "required": null,
+      "values": [
+        "x",
+        "y"
+      ],
+      "strictValues": [
+        "x",
+        "y"
+      ],
+      "user": {
+        "__typename": "Item",
+        "id": "id",
+        "name": "name",
+        "required": "required",
+        "values": [
+          "x",
+          "y"
+        ],
+        "strictValues": [
+          "x",
+          "y"
+        ],
+        "friend": null,
+        "friends": []
+      },
+      "users": [
+        {
+          "__typename": "Item",
+          "id": "id",
+          "name": "name",
+          "required": "required",
+          "values": [
+            "x",
+            "y"
+          ],
+          "strictValues": [
+            "x",
+            "y"
+          ],
+          "friend": null,
+          "friends": []
+        },
+        {
+          "__typename": "Item",
+          "id": "id",
+          "name": "name",
+          "required": "required",
+          "values": [
+            "x",
+            "y"
+          ],
+          "strictValues": [
+            "x",
+            "y"
+          ],
+          "friend": null,
+          "friends": []
+        }
+      ],
+      "strictUsers": [
+        {
+          "__typename": "Item",
+          "id": "id",
+          "name": "name",
+          "required": "required",
+          "values": [
+            "x",
+            "y"
+          ],
+          "strictValues": [
+            "x",
+            "y"
+          ],
+          "friend": null,
+          "friends": []
+        },
+        {
+          "__typename": "Item",
+          "id": "id",
+          "name": "name",
+          "required": "required",
+          "values": [
+            "x",
+            "y"
+          ],
+          "strictValues": [
+            "x",
+            "y"
+          ],
+          "friend": null,
+          "friends": []
+        }
+      ]
+    },
+    "variables": {}
+  }
+}

@@ -1077,3 +1077,15 @@ tasks.withType(PublishToMavenLocal) {
 tasks.withType(GenerateModuleMetadata) {
     enabled = false
 }
+
+// Optional verification against the separately maintained, pinned Lean model.
+tasks.register('incrementalDifferentialFuzz', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'graphql.execution.incremental.v2.fuzz.IncrementalDifferentialFuzzer'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    ['leanProject', 'leanOracle', 'fuzzCases', 'fuzzSeed', 'fuzzCorpus', 'fuzzReplay', 'fuzzOutput',
+     'fuzzResolvers', 'fuzzSentinel', 'fuzzDocuments', 'fuzzDemands'].each { name ->
+        if (project.hasProperty(name)) systemProperty(name, project.property(name))
+    }
+}

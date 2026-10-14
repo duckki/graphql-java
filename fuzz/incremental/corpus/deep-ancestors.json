@@ -1,0 +1,173 @@
+{
+  "format": 1,
+  "fixtureName": "deep-ancestors",
+  "input": {
+    "seed": 0,
+    "selections": [
+      {
+        "kind": "fragment",
+        "selections": [
+          {
+            "kind": "field",
+            "name": "a",
+            "responseName": "a",
+            "selections": [],
+            "directives": []
+          },
+          {
+            "kind": "fragment",
+            "selections": [
+              {
+                "kind": "field",
+                "name": "b",
+                "responseName": "b",
+                "selections": [],
+                "directives": []
+              },
+              {
+                "kind": "fragment",
+                "selections": [
+                  {
+                    "kind": "field",
+                    "name": "user",
+                    "responseName": "user",
+                    "selections": [
+                      {
+                        "kind": "field",
+                        "name": "name",
+                        "responseName": "name",
+                        "selections": [],
+                        "directives": []
+                      }
+                    ],
+                    "directives": []
+                  }
+                ],
+                "directives": [
+                  {
+                    "name": "defer",
+                    "if": true,
+                    "label": "inner"
+                  }
+                ]
+              }
+            ],
+            "directives": [
+              {
+                "name": "defer",
+                "if": true,
+                "label": "middle"
+              }
+            ]
+          }
+        ],
+        "directives": [
+          {
+            "name": "defer",
+            "if": true,
+            "label": "outer"
+          }
+        ]
+      }
+    ],
+    "root": {
+      "__typename": "Query",
+      "a": "A",
+      "b": "B",
+      "required": "R",
+      "values": [
+        "x",
+        "y"
+      ],
+      "strictValues": [
+        "x",
+        "y"
+      ],
+      "user": {
+        "__typename": "Item",
+        "id": "id",
+        "name": "name",
+        "required": "required",
+        "values": [
+          "x",
+          "y"
+        ],
+        "strictValues": [
+          "x",
+          "y"
+        ],
+        "friend": null,
+        "friends": []
+      },
+      "users": [
+        {
+          "__typename": "Item",
+          "id": "id",
+          "name": "name",
+          "required": "required",
+          "values": [
+            "x",
+            "y"
+          ],
+          "strictValues": [
+            "x",
+            "y"
+          ],
+          "friend": null,
+          "friends": []
+        },
+        {
+          "__typename": "Item",
+          "id": "id",
+          "name": "name",
+          "required": "required",
+          "values": [
+            "x",
+            "y"
+          ],
+          "strictValues": [
+            "x",
+            "y"
+          ],
+          "friend": null,
+          "friends": []
+        }
+      ],
+      "strictUsers": [
+        {
+          "__typename": "Item",
+          "id": "id",
+          "name": "name",
+          "required": "required",
+          "values": [
+            "x",
+            "y"
+          ],
+          "strictValues": [
+            "x",
+            "y"
+          ],
+          "friend": null,
+          "friends": []
+        },
+        {
+          "__typename": "Item",
+          "id": "id",
+          "name": "name",
+          "required": "required",
+          "values": [
+            "x",
+            "y"
+          ],
+          "strictValues": [
+            "x",
+            "y"
+          ],
+          "friend": null,
+          "friends": []
+        }
+      ]
+    },
+    "variables": {}
+  }
+}

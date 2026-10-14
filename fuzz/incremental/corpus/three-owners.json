@@ -1,0 +1,186 @@
+{
+  "format": 1,
+  "fixtureName": "three-owners",
+  "input": {
+    "seed": 0,
+    "selections": [
+      {
+        "kind": "fragment",
+        "selections": [
+          {
+            "kind": "field",
+            "name": "a",
+            "responseName": "a",
+            "selections": [],
+            "directives": []
+          },
+          {
+            "kind": "field",
+            "name": "b",
+            "responseName": "left",
+            "selections": [],
+            "directives": []
+          }
+        ],
+        "directives": [
+          {
+            "name": "defer",
+            "if": true,
+            "label": "left"
+          }
+        ]
+      },
+      {
+        "kind": "fragment",
+        "selections": [
+          {
+            "kind": "field",
+            "name": "a",
+            "responseName": "a",
+            "selections": [],
+            "directives": []
+          },
+          {
+            "kind": "field",
+            "name": "b",
+            "responseName": "middle",
+            "selections": [],
+            "directives": []
+          }
+        ],
+        "directives": [
+          {
+            "name": "defer",
+            "if": true,
+            "label": "middle"
+          }
+        ]
+      },
+      {
+        "kind": "fragment",
+        "selections": [
+          {
+            "kind": "field",
+            "name": "a",
+            "responseName": "a",
+            "selections": [],
+            "directives": []
+          },
+          {
+            "kind": "field",
+            "name": "b",
+            "responseName": "right",
+            "selections": [],
+            "directives": []
+          }
+        ],
+        "directives": [
+          {
+            "name": "defer",
+            "if": true,
+            "label": "right"
+          }
+        ]
+      }
+    ],
+    "root": {
+      "__typename": "Query",
+      "a": "A",
+      "b": "B",
+      "required": "R",
+      "values": [
+        "x",
+        "y"
+      ],
+      "strictValues": [
+        "x",
+        "y"
+      ],
+      "user": {
+        "__typename": "Item",
+        "id": "id",
+        "name": "name",
+        "required": "required",
+        "values": [
+          "x",
+          "y"
+        ],
+        "strictValues": [
+          "x",
+          "y"
+        ],
+        "friend": null,
+        "friends": []
+      },
+      "users": [
+        {
+          "__typename": "Item",
+          "id": "id",
+          "name": "name",
+          "required": "required",
+          "values": [
+            "x",
+            "y"
+          ],
+          "strictValues": [
+            "x",
+            "y"
+          ],
+          "friend": null,
+          "friends": []
+        },
+        {
+          "__typename": "Item",
+          "id": "id",
+          "name": "name",
+          "required": "required",
+          "values": [
+            "x",
+            "y"
+          ],
+          "strictValues": [
+            "x",
+            "y"
+          ],
+          "friend": null,
+          "friends": []
+        }
+      ],
+      "strictUsers": [
+        {
+          "__typename": "Item",
+          "id": "id",
+          "name": "name",
+          "required": "required",
+          "values": [
+            "x",
+            "y"
+          ],
+          "strictValues": [
+            "x",
+            "y"
+          ],
+          "friend": null,
+          "friends": []
+        },
+        {
+          "__typename": "Item",
+          "id": "id",
+          "name": "name",
+          "required": "required",
+          "values": [
+            "x",
+            "y"
+          ],
+          "strictValues": [
+            "x",
+            "y"
+          ],
+          "friend": null,
+          "friends": []
+        }
+      ]
+    },
+    "variables": {}
+  }
+}

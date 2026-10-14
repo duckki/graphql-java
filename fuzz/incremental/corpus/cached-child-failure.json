@@ -1,0 +1,188 @@
+{
+  "format": 1,
+  "fixtureName": "cached-child-failure",
+  "input": {
+    "seed": 0,
+    "selections": [
+      {
+        "kind": "fragment",
+        "selections": [
+          {
+            "kind": "field",
+            "name": "a",
+            "responseName": "a",
+            "selections": [],
+            "directives": []
+          },
+          {
+            "kind": "field",
+            "name": "user",
+            "responseName": "user",
+            "selections": [
+              {
+                "kind": "field",
+                "name": "id",
+                "responseName": "id",
+                "selections": [],
+                "directives": []
+              },
+              {
+                "kind": "fragment",
+                "selections": [
+                  {
+                    "kind": "field",
+                    "name": "required",
+                    "responseName": "required",
+                    "selections": [],
+                    "directives": []
+                  }
+                ],
+                "directives": [
+                  {
+                    "name": "defer",
+                    "if": true,
+                    "label": "child"
+                  }
+                ]
+              }
+            ],
+            "directives": []
+          }
+        ],
+        "directives": [
+          {
+            "name": "defer",
+            "if": true,
+            "label": "parent"
+          }
+        ]
+      },
+      {
+        "kind": "fragment",
+        "selections": [
+          {
+            "kind": "field",
+            "name": "user",
+            "responseName": "user",
+            "selections": [
+              {
+                "kind": "field",
+                "name": "required",
+                "responseName": "required",
+                "selections": [],
+                "directives": []
+              }
+            ],
+            "directives": []
+          }
+        ],
+        "directives": [
+          {
+            "name": "defer",
+            "if": true,
+            "label": "other"
+          }
+        ]
+      }
+    ],
+    "root": {
+      "__typename": "Query",
+      "a": "A",
+      "b": "B",
+      "required": "R",
+      "values": [
+        "x",
+        "y"
+      ],
+      "strictValues": [
+        "x",
+        "y"
+      ],
+      "user": {
+        "__typename": "Item",
+        "id": "id",
+        "name": "name",
+        "required": null,
+        "values": [
+          "x",
+          "y"
+        ],
+        "strictValues": [
+          "x",
+          "y"
+        ],
+        "friend": null,
+        "friends": []
+      },
+      "users": [
+        {
+          "__typename": "Item",
+          "id": "id",
+          "name": "name",
+          "required": "required",
+          "values": [
+            "x",
+            "y"
+          ],
+          "strictValues": [
+            "x",
+            "y"
+          ],
+          "friend": null,
+          "friends": []
+        },
+        {
+          "__typename": "Item",
+          "id": "id",
+          "name": "name",
+          "required": "required",
+          "values": [
+            "x",
+            "y"
+          ],
+          "strictValues": [
+            "x",
+            "y"
+          ],
+          "friend": null,
+          "friends": []
+        }
+      ],
+      "strictUsers": [
+        {
+          "__typename": "Item",
+          "id": "id",
+          "name": "name",
+          "required": "required",
+          "values": [
+            "x",
+            "y"
+          ],
+          "strictValues": [
+            "x",
+            "y"
+          ],
+          "friend": null,
+          "friends": []
+        },
+        {
+          "__typename": "Item",
+          "id": "id",
+          "name": "name",
+          "required": "required",
+          "values": [
+            "x",
+            "y"
+          ],
+          "strictValues": [
+            "x",
+            "y"
+          ],
+          "friend": null,
+          "friends": []
+        }
+      ]
+    },
+    "variables": {}
+  }
+}

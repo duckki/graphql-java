@@ -115,3 +115,7 @@ DataLoader integration, cancellation and late futures. Transition tests reuse wa
 preparsed documents across flag combinations and separate validation cache entries by
 configuration. Native tests cover inherited interfaces, unions and serial mutations with
 lazy nested work. The alternative model is retained from the supplied Lean porting guide.
+
+The optional [defer differential harness](../fuzz/incremental/README.md) adds exact
+comparisons with the pinned Lean oracle, saved corpus replay and shrinking. It is
+separate from ordinary tests and adds no runtime dependencies.

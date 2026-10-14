@@ -1,0 +1,98 @@
+{
+  "seed": 1000000,
+  "family": "abstract-regression",
+  "variables": {},
+  "root": {
+    "node": {
+      "__typename": "Item",
+      "id": "1",
+      "name": "Ada",
+      "itemOnly": "item"
+    },
+    "__typename": "Query"
+  },
+  "selections": [
+    {
+      "kind": "field",
+      "name": "node",
+      "responseName": "node",
+      "selections": [
+        {
+          "kind": "fragment",
+          "typeCondition": "Node",
+          "selections": [
+            {
+              "kind": "field",
+              "name": "id",
+              "responseName": "id",
+              "selections": [],
+              "directives": []
+            }
+          ],
+          "directives": []
+        },
+        {
+          "kind": "fragment",
+          "typeCondition": "Named",
+          "selections": [
+            {
+              "kind": "field",
+              "name": "name",
+              "responseName": "name",
+              "selections": [],
+              "directives": []
+            }
+          ],
+          "directives": [
+            {
+              "name": "defer",
+              "if": true,
+              "label": "common"
+            }
+          ]
+        },
+        {
+          "kind": "fragment",
+          "typeCondition": "Item",
+          "selections": [
+            {
+              "kind": "field",
+              "name": "itemOnly",
+              "responseName": "itemOnly",
+              "selections": [],
+              "directives": []
+            }
+          ],
+          "directives": [
+            {
+              "name": "defer",
+              "if": true,
+              "label": "item"
+            }
+          ]
+        },
+        {
+          "kind": "fragment",
+          "typeCondition": "Other",
+          "selections": [
+            {
+              "kind": "field",
+              "name": "otherOnly",
+              "responseName": "otherOnly",
+              "selections": [],
+              "directives": []
+            }
+          ],
+          "directives": [
+            {
+              "name": "defer",
+              "if": true,
+              "label": "other"
+            }
+          ]
+        }
+      ],
+      "directives": []
+    }
+  ]
+}
