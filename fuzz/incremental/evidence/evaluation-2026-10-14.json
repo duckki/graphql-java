@@ -1,0 +1,132 @@
+{
+  "format": 1,
+  "measuredOn": "2026-10-14",
+  "scope": "graphql/execution/incremental/v2",
+  "modelCommit": "0c0cd04cdf4d05805a9a0510fe341d10889ffa9f",
+  "oracleSourceSha256": "6a873c87845f8853d52e17eed1b75aff718ea0235921ef299773912a727343e1",
+  "javaSourceSha256": "8193780146d42863331c92352fb95a5c82c1817b6310e8c2f3751749bb8e47ac",
+  "javaVersion": "25.0.4.1",
+  "baseline": {
+    "seed": 1,
+    "cases": 10000,
+    "inputs": 10032,
+    "comparisons": 20064,
+    "harnessSha256": "62432c6c9570ed9e3ac6c4576825f0369b8fae103554f708df69b067e7c1bd38",
+    "coverage": {
+      "BRANCH": {
+        "covered": 314,
+        "missed": 150
+      },
+      "LINE": {
+        "covered": 784,
+        "missed": 210
+      }
+    }
+  },
+  "entropyAudit": {
+    "profile": "legacy",
+    "seed": 1,
+    "cases": 10000,
+    "generated": 10000,
+    "inputs": 10032,
+    "comparisons": 20064,
+    "hostChecks": 0,
+    "exceptionalItemChecks": 0,
+    "validationChecks": 0,
+    "elapsedSeconds": 20.851403,
+    "statistics": {
+      "uniqueInputs": 10032,
+      "uniqueOperations": 6901,
+      "selectionDepth": 4,
+      "entropyFallbackReads": 40472,
+      "entropyExhaustedInputs": 3532
+    },
+    "sentinelDetected": true,
+    "sentinelChecks": [
+      "error-count",
+      "data",
+      "unknown-id"
+    ],
+    "harnessSha256": "b82b19689358e22ce8f575c1221fac34c782fe27532ce99e1c22fa622d3bbbec",
+    "status": "passed"
+  },
+  "finalCi": {
+    "profile": "ci",
+    "seed": 1,
+    "cases": 2500,
+    "generated": 2500,
+    "inputs": 2532,
+    "comparisons": 20256,
+    "hostChecks": 250,
+    "faultChecks": 816,
+    "exceptionalItemChecks": 4,
+    "validationChecks": 128,
+    "elapsedSeconds": 83.965584333,
+    "statistics": {
+      "uniqueInputs": 2477,
+      "uniqueOperations": 1617,
+      "selectionDepth": 8
+    },
+    "sentinelDetected": true,
+    "sentinelChecks": [
+      "error-count",
+      "data",
+      "unknown-id"
+    ],
+    "harnessSha256": "b96400652339f6b11bc877b7022db952c37bfbda7352ce0f6750bc2e33ca3d8d",
+    "status": "passed",
+    "coverage": {
+      "BRANCH": {
+        "covered": 378,
+        "missed": 86
+      },
+      "LINE": {
+        "covered": 864,
+        "missed": 130
+      }
+    }
+  },
+  "widerNightlySample": {
+    "profile": "nightly",
+    "seed": 4294967000,
+    "cases": 1000,
+    "generated": 1000,
+    "inputs": 1032,
+    "comparisons": 8256,
+    "hostChecks": 1000,
+    "faultChecks": 3192,
+    "exceptionalItemChecks": 4,
+    "validationChecks": 128,
+    "elapsedSeconds": 86.781730333,
+    "statistics": {
+      "uniqueInputs": 1026,
+      "uniqueOperations": 754,
+      "selectionDepth": 10
+    },
+    "sentinelDetected": true,
+    "sentinelChecks": [
+      "error-count",
+      "data",
+      "unknown-id"
+    ],
+    "harnessSha256": "3733b801045c06e6ab6a3ec192684c6c9aa39969f3656542d308ab353ea6afa9",
+    "status": "passed"
+  },
+  "fullJava25Suite": {
+    "tests": 5840,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 8
+  },
+  "finalFocusedTests": 69,
+  "mixedCorpusReplay": {
+    "status": "passed",
+    "inputs": 2,
+    "comparisons": 9,
+    "hostChecks": 1,
+    "faultChecks": 1,
+    "exceptionalItemChecks": 1,
+    "validationChecks": 1,
+    "generated": 0
+  }
+}

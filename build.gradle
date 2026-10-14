@@ -1079,13 +1079,36 @@ tasks.withType(GenerateModuleMetadata) {
 }
 
 // Optional verification against the separately maintained, pinned Lean model.
-tasks.register('incrementalDifferentialFuzz', JavaExec) {
+def incrementalFuzzTask = tasks.register('incrementalDifferentialFuzz', JavaExec) {
     dependsOn testClasses
     classpath = sourceSets.test.runtimeClasspath
     mainClass = 'graphql.execution.incremental.v2.fuzz.IncrementalDifferentialFuzzer'
     javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
-    ['leanProject', 'leanOracle', 'fuzzCases', 'fuzzSeed', 'fuzzCorpus', 'fuzzReplay', 'fuzzOutput',
-     'fuzzResolvers', 'fuzzSentinel', 'fuzzDocuments', 'fuzzDemands'].each { name ->
+    ['leanProject', 'leanOracle', 'fuzzCases', 'fuzzSeed', 'fuzzCorpus', 'fuzzReplay', 'fuzzOutput', 'fuzzResolvers', 'fuzzSentinel',
+     'fuzzProfile', 'fuzzDocuments', 'fuzzDemands', 'fuzzRequireBins', 'fuzzRetainCorpus', 'fuzzDurationSeconds', 'fuzzHostCases'].each { name ->
         if (project.hasProperty(name)) systemProperty(name, project.property(name))
     }
+}
+
+if (project.hasProperty('fuzzCoverage') && project.property('fuzzCoverage').toString().toBoolean()) {
+    jacoco.applyTo(incrementalFuzzTask.get())
+    incrementalFuzzTask.configure {
+        jacoco {
+            destinationFile = layout.buildDirectory.file('jacoco/incremental-fuzz.exec').get().asFile
+            includes = ['graphql.execution.incremental.v2.*', 'graphql.incremental.*']
+        }
+    }
+}
+
+tasks.register('incrementalFuzzCoverageReport', JacocoReport) {
+    executionData layout.buildDirectory.file('jacoco/incremental-fuzz.exec')
+    sourceDirectories.setFrom(files('src/main/java'))
+    classDirectories.setFrom(fileTree(dir: layout.buildDirectory.dir('classes/java/main'), includes: [
+            'graphql/execution/incremental/v2/**', 'graphql/incremental/**'
+    ]))
+    reports {
+        xml.required = true
+        html.required = true
+    }
+    mustRunAfter incrementalFuzzTask
 }

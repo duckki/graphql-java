@@ -1,0 +1,112 @@
+{
+  "format": 1,
+  "date": "2026-10-14",
+  "scope": "Local review stack after isolation refactor",
+  "modelCommit": "0c0cd04cdf4d05805a9a0510fe341d10889ffa9f",
+  "javaSourceSha256": "526f452428acdc5b941f5319d89a0f833c87627098511222605b04de3dbb4928",
+  "harnessSha256": "c42a8f9367dceb6871fb6f96d72fadb5dbcb4b9be5de54069ca031c8604afa19",
+  "oracleSourceSha256": "e4e20017f04663a1e3c5b7631e2aae26938ca29212533c226306c7f3a3df1ac8",
+  "ciCampaign": {
+    "status": "passed",
+    "profile": "ci",
+    "seed": 4294967000,
+    "generated": 2000,
+    "inputs": 2036,
+    "comparisons": 16288,
+    "hostChecks": 100,
+    "faultChecks": 320,
+    "validationChecks": 128,
+    "exceptionalItemChecks": 4,
+    "elapsedSeconds": 66.403885333,
+    "sentinelDetected": true
+  },
+  "coverage": {
+    "package": "graphql.execution.incremental.v2",
+    "executionData": "incremental-fuzz.exec only",
+    "counters": {
+      "BRANCH": {
+        "covered": 404,
+        "missed": 88
+      },
+      "LINE": {
+        "covered": 933,
+        "missed": 136
+      }
+    }
+  },
+  "focusedRuntimeChecks": {
+    "test": {
+      "tests": 99,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "testWithJava11": {
+      "tests": 99,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "testWithJava17": {
+      "tests": 99,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "testWithJava21": {
+      "tests": 99,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  },
+  "deferProfile": {
+    "status": "passed",
+    "profile": "defer",
+    "seed": 4294967250,
+    "generated": 100,
+    "inputs": 116,
+    "comparisons": 464,
+    "hostChecks": 0,
+    "sentinelDetected": true
+  },
+  "deferBranch": {
+    "branch": "codex/incremental-v2-01-defer",
+    "head": "f4de8562122009523373a86ba6fae47088ba987b",
+    "validation": "Java 25 full suite, assemble, check excluding TestNG, javadoc",
+    "counts": {
+      "tests": 5819,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 8
+    },
+    "focusedTests": 47
+  },
+  "streamBranch": {
+    "branch": "codex/incremental-v2-03-stream",
+    "head": "a6c0a1859170db525dbe2d2aca16b9807fb15e85",
+    "validation": "Java 25 full suite, TestNG, assemble, check, javadoc",
+    "counts": {
+      "test": {
+        "tests": 5856,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 8
+      },
+      "testng": {
+        "tests": 190,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 49
+      }
+    }
+  },
+  "commands": [
+    "./gradlew test assemble check -x testng javadoc",
+    "./gradlew test testng assemble check javadoc",
+    "./gradlew incrementalDifferentialFuzz incrementalFuzzCoverageReport -PleanProject=/path/to/graphql-lean -PfuzzProfile=ci -PfuzzCases=2000 -PfuzzSeed=4294967000 -PfuzzCoverage=true",
+    "./gradlew testWithJava11 --tests graphql.execution.incremental.v2.* testWithJava17 --tests graphql.execution.incremental.v2.* testWithJava21 --tests graphql.execution.incremental.v2.*",
+    "./gradlew incrementalDifferentialFuzz -PleanProject=/path/to/graphql-lean -PfuzzProfile=defer -PfuzzCases=100 -PfuzzSeed=4294967250 -PfuzzDemands=unbounded"
+  ],
+  "limitations": "Coverage denominator differs from historical campaigns. The retained 50000-case nightly measurement is for the backup source; this fresh campaign is bounded CI verification."
+}

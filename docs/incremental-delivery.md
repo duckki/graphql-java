@@ -130,9 +130,12 @@ conditions, serial mutation prefixes with lazy nested work, held-source cancella
 100 barrier-released cancellation/completion races.
 The optional [Java–Lean differential harness](../fuzz/incremental/README.md) independently
 executes valid generated operations and replays the shared JavaScript semantic corpus.
-The small harness covers sync and completed-future resolvers, inline and named documents,
-rotating demand, replay and shrinking, including the added stream semantic corpus.
-Delayed schedules, native fuzz properties and coverage profiles are a separate follow-up.
+Its profiles include delayed resolver/item futures, named-fragment inlining checks,
+varying demand, native cancellation/validation properties, semantic coverage gates,
+retained witnesses and optional JVM branch coverage. Multi-failure inputs additionally
+check native error origins and ordinary execution parity; exact Lean comparisons use
+an explicitly bounded error domain because eager and native cancellation schedules
+can retain different errors. The small defer profile remains available.
 
 Differential agreement tests the finite modeled subset. It does not constitute a formal
 Java refinement proof or certify arbitrary asynchronous callback schedules, infinite sources,

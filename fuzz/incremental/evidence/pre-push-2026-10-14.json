@@ -1,0 +1,146 @@
+{
+  "format": 1,
+  "measuredOn": "2026-10-14",
+  "nightly": {
+    "modelCommit": "0c0cd04cdf4d05805a9a0510fe341d10889ffa9f",
+    "oracleSourceSha256": "e4e20017f04663a1e3c5b7631e2aae26938ca29212533c226306c7f3a3df1ac8",
+    "javaSourceSha256": "8193780146d42863331c92352fb95a5c82c1817b6310e8c2f3751749bb8e47ac",
+    "harnessSha256": "dd1a31a5c021fc524917d3190ef4e4be5d666fef41997e2682ffe766839f71e0",
+    "javaVersion": "25.0.4.1",
+    "profile": "nightly",
+    "seed": 4294947296,
+    "cases": 50000,
+    "generated": 50000,
+    "inputs": 50036,
+    "comparisons": 400288,
+    "hostChecks": 1000,
+    "faultChecks": 3184,
+    "validationChecks": 128,
+    "exceptionalItemChecks": 4,
+    "elapsedSeconds": 1612.396916875,
+    "statistics": {
+      "uniqueInputs": 44567,
+      "uniqueOperations": 24969,
+      "selectionDepth": 10
+    },
+    "sentinelDetected": true,
+    "sentinelChecks": [
+      "error-count",
+      "data",
+      "unknown-id"
+    ],
+    "resolvers": [
+      "sync",
+      "promise",
+      "items",
+      "async"
+    ],
+    "documents": [
+      "inline",
+      "named"
+    ],
+    "demands": [
+      "one",
+      "burst",
+      "all"
+    ],
+    "status": "passed",
+    "semanticCoverage": {
+      "family.corpus": 256,
+      "syntax.interface": 80104,
+      "family.abstract-regression": 32,
+      "wire.item-type-patch": 78552,
+      "wire.other-type-patch": 35712,
+      "syntax.union": 56296,
+      "family.shared-composite": 21816,
+      "family.abstract-defer": 21816,
+      "family.abstract-stream": 21816,
+      "family.structural": 160160,
+      "family.shared-owners": 21840,
+      "family.deep-defer": 21800,
+      "family.prefix-boundary": 21792,
+      "family.nested-list": 21792,
+      "family.stream-children": 21792,
+      "family.fatal-tail": 21792,
+      "family.deferred-cut": 21792,
+      "family.conditions": 21792
+    }
+  },
+  "coverage": {
+    "BRANCH": {
+      "covered": 397,
+      "missed": 67
+    },
+    "LINE": {
+      "covered": 870,
+      "missed": 124
+    }
+  },
+  "runtimeMatrix": {
+    "testWithJava11": {
+      "tests": 5853,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 7,
+      "passed": 5846
+    },
+    "testngWithJava11": {
+      "tests": 190,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 49,
+      "passed": 141
+    },
+    "testWithJava17": {
+      "tests": 5853,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 8,
+      "passed": 5845
+    },
+    "testngWithJava17": {
+      "tests": 190,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 49,
+      "passed": 141
+    },
+    "testWithJava21": {
+      "tests": 5853,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 8,
+      "passed": 5845
+    },
+    "testngWithJava21": {
+      "tests": 190,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 49,
+      "passed": 141
+    },
+    "testng": {
+      "tests": 190,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 49,
+      "passed": 141
+    }
+  },
+  "packagingChecks": [
+    "assemble",
+    "check with focused incremental Spock tests and TestNG excluded",
+    "verifyShadedClassAnnotations",
+    "compileShadedJarConsumer",
+    "javadoc"
+  ],
+  "focusedJava25Tests": 81,
+  "scope": "graphql/execution/incremental/v2",
+  "corpusInputs": 36,
+  "raceIterationsPerRun": 100,
+  "commands": {
+    "matrix": "./gradlew testWithJava11 testngWithJava11 testWithJava17 testngWithJava17 testWithJava21 testngWithJava21 testng --continue",
+    "packaging": "./gradlew test --tests graphql.execution.incremental.v2.* assemble check -x testng javadoc",
+    "nightly": "./gradlew incrementalDifferentialFuzz incrementalFuzzCoverageReport -PleanProject=/path/to/graphql-lean -PfuzzProfile=nightly -PfuzzCases=50000 -PfuzzSeed=4294947296 -PfuzzCoverage=true -PfuzzOutput=build/incremental-fuzz/expanded-nightly"
+  }
+}
