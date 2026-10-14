@@ -16,11 +16,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.WeakHashMap;
+import java.util.concurrent.CompletableFuture;
 
 @Internal
 public final class IncrementalWorkQueue {
     private final Set<DeliveryGroup> roots = new LinkedHashSet<>();
     private final Set<DeliveryGroup> ready = new LinkedHashSet<>();
+    private final Set<ItemStream> streams = new LinkedHashSet<>();
     private final Set<DeliveryGroup> failedGroups = Collections.newSetFromMap(new WeakHashMap<>());
     private final Map<DeliveryGroup, GroupRecord> groupRecords = new LinkedHashMap<>();
     private final Map<DeferredTask, TaskRecord> taskRecords = new LinkedHashMap<>();
@@ -42,6 +44,10 @@ public final class IncrementalWorkQueue {
             addRoot(group);
             initialPending.add(mapper.pending(group));
         }
+        for (ItemStream stream : integrated.streams) {
+            streams.add(stream);
+            initialPending.add(mapper.pending(stream));
+        }
         integrated.rejectedTasks.forEach(DeferredTask::abort);
     }
 
@@ -62,6 +68,7 @@ public final class IncrementalWorkQueue {
         if (started || stopped) return;
         started = true;
         new ArrayList<>(roots).forEach(this::startGroup);
+        new ArrayList<>(streams).forEach(this::startStream);
     }
 
     public @Nullable DelayedIncrementalPartialResult nextBatch() {
@@ -70,7 +77,7 @@ public final class IncrementalWorkQueue {
         int count = events.size();
         for (int index = 0; index < count && !stopped; index++) events.removeFirst().accept(batch);
         drainReady(batch);
-        boolean hasNext = !roots.isEmpty();
+        boolean hasNext = !roots.isEmpty() || !streams.isEmpty();
         if (stopped || batch.isEmpty() && hasNext) return null;
         if (!hasNext) retire();
         return batch.toResult(hasNext);
@@ -86,6 +93,7 @@ public final class IncrementalWorkQueue {
         Set<DeferredTask> tasks = new LinkedHashSet<>();
         groupRecords.values().forEach(record -> tasks.addAll(record.tasks));
         tasks.forEach(this::disposeTask);
+        new ArrayList<>(streams).forEach(ItemStream::cancel);
         retire();
     }
 
@@ -94,6 +102,7 @@ public final class IncrementalWorkQueue {
         stopped = true;
         roots.clear();
         ready.clear();
+        streams.clear();
         groupRecords.clear();
         taskRecords.clear();
         failedGroups.clear();
@@ -113,6 +122,7 @@ public final class IncrementalWorkQueue {
         Set<DeliveryGroup> declared = new LinkedHashSet<>(groups);
         groups.forEach(group -> addGroup(group, declared, integrated, producer));
         work.getTasks().forEach(task -> addTask(task, integrated));
+        addStreams(work.getStreams(), producer, integrated);
         work.adopt();
         return integrated;
     }
@@ -153,6 +163,12 @@ public final class IncrementalWorkQueue {
         else if (!registered) integrated.rejectedTasks.add(task);
     }
 
+    private void addStreams(List<ItemStream> newStreams, @Nullable DeferredTask producer, IntegratedWork integrated) {
+        if (producer == null) { integrated.streams.addAll(newStreams); return; }
+        TaskRecord record = taskRecords.get(producer);
+        if (record != null) record.streams.addAll(newStreams);
+    }
+
     private List<DeliveryGroup> pruneEmpty(List<DeliveryGroup> groups) {
         List<DeliveryGroup> result = new ArrayList<>();
         Deque<DeliveryGroup> stack = new ArrayDeque<>();
@@ -184,9 +200,11 @@ public final class IncrementalWorkQueue {
         if (stopped) return;
         List<DeliveryGroup> groups = pruneEmpty(integrated.groups);
         for (DeliveryGroup group : groups) { addRoot(group); batch.pending.add(mapper.pending(group)); }
+        for (ItemStream stream : integrated.streams) { streams.add(stream); batch.pending.add(mapper.pending(stream)); }
         integrated.rejectedTasks.forEach(DeferredTask::abort);
         integrated.activeTasks.forEach(this::startTask);
         groups.forEach(this::startGroup);
+        integrated.streams.forEach(this::startStream);
     }
 
     private void startGroup(DeliveryGroup group) {
@@ -281,6 +299,7 @@ public final class IncrementalWorkQueue {
         TaskRecord record = taskRecords.get(task);
         if (record == null) return;
         if (record.result != null) batch.incremental.add(mapper.deferred(group, task, record.result));
+        released.streams.addAll(record.streams);
         removeTask(task);
     }
 
@@ -315,6 +334,7 @@ public final class IncrementalWorkQueue {
     private void disposeTask(DeferredTask task) {
         TaskRecord record = taskRecords.get(task);
         task.abort();
+        if (record != null) record.streams.forEach(ItemStream::cancel);
     }
 
     private void removeTask(DeferredTask task) {
@@ -327,4 +347,55 @@ public final class IncrementalWorkQueue {
         if (record != null) record.tasks.remove(task);
     }
 
+    private void startStream(ItemStream stream) {
+        if (stopped || !streams.contains(stream)) return;
+        CompletableFuture.runAsync(() -> pullStream(stream));
+    }
+
+    private void pullStream(ItemStream stream) {
+        try {
+            CompletableFuture<WorkResult> result = stream.next();
+            if (result == null) { dispatch(() -> receiveStreamEnd(stream)); return; }
+            result.whenComplete((value, exception) -> dispatch(() -> receiveStream(stream, value, exception)));
+        } catch (Exception exception) {
+            dispatch(() -> receiveStream(stream, null, exception));
+        }
+    }
+
+    private void receiveStreamEnd(ItemStream stream) {
+        if (stopped || !streams.contains(stream)) return;
+        events.add(batch -> finishStream(stream, Collections.emptyList(), batch));
+        publisher.pump();
+    }
+
+    private void receiveStream(ItemStream stream, @Nullable WorkResult result, @Nullable Throwable exception) {
+        if (stopped || !streams.contains(stream)) {
+            if (result != null) result.getWork().dispose();
+            stream.consumed();
+            return;
+        }
+        if (exception != null) events.add(batch -> finishStream(stream, IncrementalErrors.from(exception, stream.getPath()), batch));
+        else events.add(batch -> admitItem(stream, result, batch));
+        publisher.pump();
+    }
+
+    private void admitItem(ItemStream stream, WorkResult result, IncrementalBatch batch) {
+        try {
+            if (stopped || !streams.contains(stream)) { result.getWork().dispose(); return; }
+            if (result.isFailed()) { stream.cancel(); finishStream(stream, result.getErrors(), batch); return; }
+            IntegratedWork integrated = integrate(result.getWork(), null);
+            batch.incremental.add(mapper.streamed(stream, result));
+            startNew(integrated, batch);
+        } finally {
+            stream.consumed();
+        }
+        drainReady(batch);
+        startStream(stream);
+    }
+
+    private void finishStream(ItemStream stream, List<GraphQLError> errors, IncrementalBatch batch) {
+        if (!streams.remove(stream)) return;
+        if (!errors.isEmpty()) stream.cancel();
+        batch.completed.add(mapper.completed(stream, errors));
+    }
 }

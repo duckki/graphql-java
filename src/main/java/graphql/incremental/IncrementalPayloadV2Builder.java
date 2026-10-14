@@ -15,6 +15,7 @@ public final class IncrementalPayloadV2Builder {
     private String id;
     private List<Object> subPath = Collections.emptyList();
     private Map<String, Object> data;
+    private List<Object> items;
     private List<GraphQLError> errors = Collections.emptyList();
 
     /**
@@ -42,6 +43,14 @@ public final class IncrementalPayloadV2Builder {
         return this;
     }
     /**
+     * @param items streamed items
+     * @return this builder
+     */
+    public IncrementalPayloadV2Builder items(List<Object> items) {
+        this.items = items;
+        return this;
+    }
+    /**
      * @param errors patch errors
      * @return this builder
      */
@@ -51,6 +60,6 @@ public final class IncrementalPayloadV2Builder {
     }
     /** @return the immutable patch */
     public IncrementalPayloadV2 build() {
-        return new IncrementalPayloadV2(id, subPath, data, errors);
+        return new IncrementalPayloadV2(id, subPath, data, items, errors);
     }
 }

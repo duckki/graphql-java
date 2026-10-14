@@ -16,6 +16,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static graphql.Scalars.GraphQLBoolean;
+import static graphql.Scalars.GraphQLInt;
 import static graphql.Scalars.GraphQLString;
 import static graphql.introspection.Introspection.DirectiveLocation.ARGUMENT_DEFINITION;
 import static graphql.introspection.Introspection.DirectiveLocation.DIRECTIVE_DEFINITION;
@@ -186,6 +187,21 @@ public class Directives {
                     .description("A unique label that represents the fragment being deferred")
             )
             .definition(DEFER_DIRECTIVE_DEFINITION)
+            .build();
+
+    /**
+     * Opt-in directive for delivering the outermost list incrementally. Requires
+     * {@link ExperimentalApi#ENABLE_INCREMENTAL_SUPPORT_V2} in the execution context.
+     */
+    @ExperimentalApi
+    public static final GraphQLDirective StreamDirective = GraphQLDirective.newDirective()
+            .name("stream")
+            .description("Delivers list items incrementally")
+            .validLocations(FIELD)
+            .argument(newArgument().name("if").type(nonNull(GraphQLBoolean))
+                    .defaultValueLiteral(BooleanValue.newBooleanValue(true).build()))
+            .argument(newArgument().name("label").type(GraphQLString))
+            .argument(newArgument().name("initialCount").type(nonNull(GraphQLInt)).defaultValueProgrammatic(0))
             .build();
 
     public static final GraphQLDirective IncludeDirective = GraphQLDirective.newDirective()

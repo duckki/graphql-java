@@ -13,6 +13,7 @@ public final class IncrementalWork {
     private final IncrementalExecutionControl control;
     private final List<DeliveryGroup> groups = new ArrayList<>();
     private final List<DeferredTask> tasks = new ArrayList<>();
+    private final List<ItemStream> streams = new ArrayList<>();
     private boolean disposed;
     private boolean adopted;
 
@@ -43,12 +44,20 @@ public final class IncrementalWork {
         if (disposed || adopted) { task.abort(); return; }
         tasks.add(task);
     }
+    public synchronized void addStream(ItemStream stream) {
+        if (disposed || adopted) { stream.cancel(); return; }
+        streams.add(stream);
+    }
     public synchronized List<DeliveryGroup> getGroups() {
         return new ArrayList<>(groups);
     }
     public synchronized List<DeferredTask> getTasks() {
         return new ArrayList<>(tasks);
     }
+    public synchronized List<ItemStream> getStreams() {
+        return new ArrayList<>(streams);
+    }
+
     public synchronized void adopt() {
         adopted = true;
         clear();
@@ -58,17 +67,25 @@ public final class IncrementalWork {
         if (disposed || adopted) return;
         disposed = true;
         tasks.forEach(DeferredTask::abort);
+        streams.forEach(ItemStream::cancel);
         clear();
     }
 
     public synchronized void filter(@Nullable Object data, ResultPath basePath) {
         groups.removeIf(group -> !exposed(data, basePath, group.getPath()));
         tasks.removeIf(task -> disposeIfHidden(data, basePath, task));
+        streams.removeIf(stream -> cancelIfHidden(data, basePath, stream));
     }
 
     private boolean disposeIfHidden(@Nullable Object data, ResultPath basePath, DeferredTask task) {
         if (exposed(data, basePath, task.getPath())) return false;
         task.abort();
+        return true;
+    }
+
+    private boolean cancelIfHidden(@Nullable Object data, ResultPath basePath, ItemStream stream) {
+        if (exposed(data, basePath, stream.getPath())) return false;
+        stream.cancel();
         return true;
     }
 
@@ -95,5 +112,6 @@ public final class IncrementalWork {
     private void clear() {
         groups.clear();
         tasks.clear();
+        streams.clear();
     }
 }

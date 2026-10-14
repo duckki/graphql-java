@@ -60,7 +60,7 @@ public final class IncrementalDirectiveChecks {
     }
 
     private void checkActive(List<Directive> directives, CoercedVariables variables, ExecutionInput input) {
-        for (GraphQLDirective definition : List.of(Directives.DeferDirective)) {
+        for (GraphQLDirective definition : List.of(Directives.DeferDirective, Directives.StreamDirective)) {
             Directive directive = NodeUtil.findNodeByName(directives, definition.getName());
             if (directive != null) rejectActive(definition, directive, variables, input);
         }

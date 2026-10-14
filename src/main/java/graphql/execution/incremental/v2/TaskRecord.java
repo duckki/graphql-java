@@ -8,4 +8,5 @@ import java.util.List;
 @Internal
 public final class TaskRecord {
     public WorkResult result;
+    public final List<ItemStream> streams = new ArrayList<>();
 }

@@ -39,4 +39,14 @@ class IncrementalPayloadV2Test extends Specification {
         expect:
         result.transform { it.data([a: 2]) }.toSpecification() == [data: [a: 2], pending: [[id: '0', path: []]], hasNext: true]
     }
+    def 'stream patches snapshot nullable items'() {
+        given:
+        def values = [null, 2]
+        def patch = IncrementalPayloadV2.newIncrementalPayloadV2().id('0').items(values).build()
+        values.add(3)
+
+        expect:
+        patch.toSpecification() == [id: '0', items: [null, 2]]
+        patch.transform { it.id('1') }.toSpecification() == [id: '1', items: [null, 2]]
+    }
 }

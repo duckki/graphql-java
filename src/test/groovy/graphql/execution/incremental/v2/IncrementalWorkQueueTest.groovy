@@ -64,6 +64,8 @@ class IncrementalWorkQueueTest extends Specification {
         def dormantFailure = new CompletableFuture<WorkResult>()
         def sharedResult = new CompletableFuture<WorkResult>()
         def held = new IncrementalWork()
+        def source = new CloseableItems(values: [1])
+        held.addStream(new ItemStream(path, null, source.iterator(), 0, source, held, { raw, index, itemWork -> CompletableFuture.completedFuture(success([value: raw])) }))
         def work = new IncrementalWork()
         [parent, dormant, live].each { work.addGroup(it) }
         work.addTask(task([parent], parentResult))
@@ -79,6 +81,7 @@ class IncrementalWorkQueueTest extends Specification {
 
         then:
         held.checkRunning() == null
+        source.closed.get() == 0
 
         when:
         parentResult.complete(success([name: 'parent']))
@@ -87,6 +90,7 @@ class IncrementalWorkQueueTest extends Specification {
 
         then:
         thrown(java.util.concurrent.CancellationException)
+        source.closed.get() == 1
 
         when:
         sharedResult.complete(success([ignored: true], held))
