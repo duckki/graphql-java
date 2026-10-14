@@ -1,0 +1,21 @@
+{
+  "lane": "faults",
+  "input": {
+    "seed": 379,
+    "family": "causal-error-order",
+    "variables": {},
+    "root": {"__typename": "Query", "user": {"__typename": "Item", "name": "kept", "id": null}, "a": {"$error": true}, "required": null},
+    "selections": [
+      {"kind": "field", "name": "user", "responseName": "user", "directives": [], "selections": [
+        {"kind": "field", "name": "name", "responseName": "name", "directives": [], "selections": []}
+      ]},
+      {"kind": "fragment", "directives": [{"name": "defer", "if": true}], "selections": [
+        {"kind": "field", "name": "user", "responseName": "user", "directives": [], "selections": [
+          {"kind": "field", "name": "id", "responseName": "id", "directives": [], "selections": []}
+        ]},
+        {"kind": "field", "name": "a", "responseName": "a", "directives": [], "selections": []},
+        {"kind": "field", "name": "required", "responseName": "required", "directives": [], "selections": []}
+      ]}
+    ]
+  }
+}
