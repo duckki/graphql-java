@@ -301,6 +301,11 @@ public class PerLevelDataLoaderDispatchStrategy implements DataLoaderDispatchStr
     public void executeObject(ExecutionContext executionContext, ExecutionStrategyParameters parameters, int fieldCount) {
         CallStack callStack = getCallStack(parameters);
         int curLevel = parameters.getPath().getLevel();
+        AlternativeCallContext alternative = parameters.getAlternativeCallContext();
+        if (parameters.getIncrementalExecutionParameters() != null && alternative != null
+                && curLevel == alternative.getStartLevel() - 1) {
+            return;
+        }
         while (true) {
             CallStack.StateForLevel currentState = callStack.get(curLevel);
             if (callStack.tryUpdateLevel(curLevel, currentState, currentState.increaseHappenedExecuteObjectCalls())) {
@@ -393,6 +398,11 @@ public class PerLevelDataLoaderDispatchStrategy implements DataLoaderDispatchStr
             }
         }
         onCompletionFinished(0, callStack);
+    }
+
+    @Override
+    public void incrementalExecutionDone(AlternativeCallContext alternativeCallContext) {
+        alternativeCallContextMap.remove(alternativeCallContext);
     }
 
     @Override

@@ -65,6 +65,10 @@ public interface DataLoaderDispatchStrategy {
 
     }
 
+    default void incrementalExecutionDone(AlternativeCallContext alternativeCallContext) {
+
+    }
+
     default void subscriptionEventExecutionDone(AlternativeCallContext alternativeCallContext) {
 
     }

@@ -3,6 +3,7 @@ package graphql.execution;
 import graphql.Internal;
 import graphql.PublicApi;
 import graphql.execution.incremental.AlternativeCallContext;
+import graphql.execution.incremental.v2.IncrementalExecutionParameters;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.NullUnmarked;
 import org.jspecify.annotations.Nullable;
@@ -26,6 +27,7 @@ public class ExecutionStrategyParameters {
     private final @Nullable MergedField currentField;
     private final @Nullable ExecutionStrategyParameters parent;
     private final @Nullable AlternativeCallContext alternativeCallContext;
+    private final @Nullable IncrementalExecutionParameters incrementalExecutionParameters;
 
     private ExecutionStrategyParameters(ExecutionStepInfo executionStepInfo,
                                         @Nullable Object source,
@@ -35,7 +37,8 @@ public class ExecutionStrategyParameters {
                                         ResultPath path,
                                         @Nullable MergedField currentField,
                                         @Nullable ExecutionStrategyParameters parent,
-                                        @Nullable AlternativeCallContext alternativeCallContext) {
+                                        @Nullable AlternativeCallContext alternativeCallContext,
+                                        @Nullable IncrementalExecutionParameters incrementalExecutionParameters) {
 
         this.executionStepInfo = assertNotNull(executionStepInfo, "executionStepInfo is null");
         this.localContext = localContext;
@@ -46,6 +49,12 @@ public class ExecutionStrategyParameters {
         this.currentField = currentField;
         this.parent = parent;
         this.alternativeCallContext = alternativeCallContext;
+        this.incrementalExecutionParameters = incrementalExecutionParameters;
+    }
+
+    @Internal
+    public @Nullable IncrementalExecutionParameters getIncrementalExecutionParameters() {
+        return incrementalExecutionParameters;
     }
 
     public ExecutionStepInfo getExecutionStepInfo() {
@@ -116,7 +125,8 @@ public class ExecutionStrategyParameters {
                 path,
                 currentField,
                 parent,
-                alternativeCallContext);
+                alternativeCallContext,
+                incrementalExecutionParameters);
     }
 
     @Internal
@@ -131,7 +141,8 @@ public class ExecutionStrategyParameters {
                 path,
                 currentField,
                 parent,
-                alternativeCallContext);
+                alternativeCallContext,
+                incrementalExecutionParameters);
     }
 
     @Internal
@@ -147,7 +158,8 @@ public class ExecutionStrategyParameters {
                 path,
                 currentField,
                 parent,
-                alternativeCallContext);
+                alternativeCallContext,
+                incrementalExecutionParameters);
     }
 
     @Internal
@@ -162,7 +174,8 @@ public class ExecutionStrategyParameters {
                 path,
                 currentField,
                 parent,
-                alternativeCallContext);
+                alternativeCallContext,
+                incrementalExecutionParameters);
     }
 
     @Internal
@@ -177,7 +190,8 @@ public class ExecutionStrategyParameters {
                 path,
                 currentField,
                 parent,
-                alternativeCallContext);
+                alternativeCallContext,
+                incrementalExecutionParameters);
     }
 
     public ExecutionStrategyParameters transform(Consumer<Builder> builderConsumer) {
@@ -211,6 +225,7 @@ public class ExecutionStrategyParameters {
         MergedField currentField;
         ExecutionStrategyParameters parent;
         AlternativeCallContext alternativeCallContext;
+        IncrementalExecutionParameters incrementalExecutionParameters;
 
         /**
          * @see ExecutionStrategyParameters#newParameters()
@@ -229,6 +244,7 @@ public class ExecutionStrategyParameters {
             this.nonNullableFieldValidator = oldParameters.nonNullableFieldValidator;
             this.currentField = oldParameters.currentField;
             this.alternativeCallContext = oldParameters.alternativeCallContext;
+            this.incrementalExecutionParameters = oldParameters.incrementalExecutionParameters;
             this.path = oldParameters.path;
             this.parent = oldParameters.parent;
         }
@@ -283,8 +299,14 @@ public class ExecutionStrategyParameters {
             return this;
         }
 
+        @Internal
+        public Builder incrementalExecutionParameters(IncrementalExecutionParameters parameters) {
+            this.incrementalExecutionParameters = parameters;
+            return this;
+        }
+
         public ExecutionStrategyParameters build() {
-            return new ExecutionStrategyParameters(executionStepInfo, source, localContext, fields, nonNullableFieldValidator, path, currentField, parent, alternativeCallContext);
+            return new ExecutionStrategyParameters(executionStepInfo, source, localContext, fields, nonNullableFieldValidator, path, currentField, parent, alternativeCallContext, incrementalExecutionParameters);
         }
     }
 }

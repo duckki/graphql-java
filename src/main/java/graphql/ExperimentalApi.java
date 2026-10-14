@@ -24,4 +24,11 @@ public @interface ExperimentalApi {
      * The key that should be associated with a boolean value which indicates whether @defer and @stream behaviour is enabled for this execution.
      */
     String ENABLE_INCREMENTAL_SUPPORT  = "ENABLE_INCREMENTAL_SUPPORT";
+
+    /**
+     * Enables the incremental delivery draft with pending IDs and completion notices.
+     * This option supersedes {@link #ENABLE_INCREMENTAL_SUPPORT} for this execution.
+     * The schema must explicitly include the defer and stream directives.
+     */
+    String ENABLE_INCREMENTAL_SUPPORT_V2 = "ENABLE_INCREMENTAL_SUPPORT_V2";
 }

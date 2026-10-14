@@ -2,6 +2,7 @@ package graphql.validation;
 
 
 import graphql.Internal;
+import graphql.GraphQLContext;
 import graphql.i18n.I18n;
 import graphql.language.Document;
 import graphql.schema.GraphQLSchema;
@@ -41,8 +42,13 @@ public class Validator {
     }
 
     public List<ValidationError> validateDocument(GraphQLSchema schema, Document document, Predicate<OperationValidationRule> rulePredicate, Locale locale, QueryComplexityLimits limits) {
+        return validateDocument(schema, document, rulePredicate, locale, limits, GraphQLContext.getDefault());
+    }
+
+    public List<ValidationError> validateDocument(GraphQLSchema schema, Document document, Predicate<OperationValidationRule> rulePredicate,
+                                                  Locale locale, QueryComplexityLimits limits, GraphQLContext graphQLContext) {
         I18n i18n = I18n.i18n(I18n.BundleType.Validation, locale);
-        ValidationContext validationContext = new ValidationContext(schema, document, i18n, limits);
+        ValidationContext validationContext = new ValidationContext(schema, document, i18n, limits, graphQLContext);
 
         ValidationErrorCollector validationErrorCollector = new ValidationErrorCollector(MAX_VALIDATION_ERRORS);
         OperationValidator operationValidator = new OperationValidator(validationContext, validationErrorCollector, rulePredicate);

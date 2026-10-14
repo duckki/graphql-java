@@ -17,6 +17,10 @@ import graphql.execution.directives.QueryDirectivesImpl;
 import graphql.execution.incremental.AlternativeCallContext;
 import graphql.execution.incremental.DeferredExecutionSupport;
 import graphql.execution.incremental.IncrementalExecutionContextKeys;
+import graphql.execution.incremental.v2.IncrementalExecutionParameters;
+import graphql.execution.incremental.v2.IncrementalExecutionSupport;
+import graphql.execution.incremental.v2.IncrementalFieldCompletion;
+import graphql.execution.incremental.v2.IncrementalObjectCompletion;
 import graphql.execution.instrumentation.ExecuteObjectInstrumentationContext;
 import graphql.execution.instrumentation.FieldFetchingInstrumentationContext;
 import graphql.execution.instrumentation.Instrumentation;
@@ -374,6 +378,10 @@ public abstract class ExecutionStrategy {
 
     DeferredExecutionSupport createDeferredExecutionSupport(ExecutionContext executionContext, ExecutionStrategyParameters parameters) {
         MergedSelectionSet fields = parameters.getFields();
+        if (parameters.getIncrementalExecutionParameters() != null) {
+            return new IncrementalExecutionSupport(parameters, executionContext.getDataLoaderDispatcherStrategy(),
+                    taskParameters -> executeObject(executionContext, taskParameters));
+        }
 
         return executionContext.hasIncrementalSupport() ?
                 new DeferredExecutionSupport.DeferredExecutionSupportImpl(
@@ -403,6 +411,8 @@ public abstract class ExecutionStrategy {
 
         for (String fieldName : fields.getKeys()) {
             executionContext.throwIfCancelled();
+            IncrementalExecutionParameters incremental = parameters.getIncrementalExecutionParameters();
+            if (incremental != null) incremental.getWork().checkRunning();
 
             MergedField currentField = fields.getSubField(fieldName);
 
@@ -410,7 +420,9 @@ public abstract class ExecutionStrategy {
             ExecutionStrategyParameters newParameters = parameters.transform(currentField, fieldPath, parameters);
 
             if (!deferredExecutionSupport.isDeferredField(currentField)) {
-                Object fieldValueInfo = resolveFieldWithInfo(executionContext, newParameters);
+                Object fieldValueInfo = incremental == null ? resolveFieldWithInfo(executionContext, newParameters)
+                        : new IncrementalFieldCompletion().resolve(executionContext, newParameters,
+                        createExecutionStepInfo(executionContext, newParameters), fieldParameters -> resolveFieldWithInfo(executionContext, fieldParameters));
                 futures.addObject(fieldValueInfo);
             }
 
@@ -1051,6 +1063,11 @@ public abstract class ExecutionStrategy {
                 .graphQLContext(executionContext.getGraphQLContext())
                 .build();
 
+        IncrementalExecutionParameters incremental = parameters.getIncrementalExecutionParameters();
+        if (incremental != null) {
+            return new IncrementalObjectCompletion().complete(executionContext, parameters, resolvedObjectType, result, collectorParameters,
+                    child -> executionContext.getQueryStrategy().executeObject(executionContext, child));
+        }
         MergedSelectionSet subFields = fieldCollector.collectFields(
                 collectorParameters,
                 parameters.getField(),

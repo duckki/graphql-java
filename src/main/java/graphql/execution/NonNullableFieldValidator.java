@@ -51,7 +51,7 @@ public class NonNullableFieldValidator {
                 NonNullableFieldWasNullException nonNullException = new NonNullableFieldWasNullException(executionStepInfo, path);
                 final GraphQLError error = new NonNullableFieldWasNullError(nonNullException);
                 if(parameters.getAlternativeCallContext() != null) {
-                    parameters.getAlternativeCallContext().addError(error);
+                    graphql.execution.incremental.v2.IncrementalErrorSupport.add(parameters, error, path);
                 } else {
                     executionContext.addError(error, path);
                 }

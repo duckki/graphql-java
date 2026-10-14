@@ -412,7 +412,8 @@ public class ExecutionContext {
     @Internal
     public boolean hasIncrementalSupport() {
         GraphQLContext graphqlContext = getGraphQLContext();
-        return graphqlContext != null && graphqlContext.getBoolean(ExperimentalApi.ENABLE_INCREMENTAL_SUPPORT);
+        return graphqlContext != null && (graphqlContext.getBoolean(ExperimentalApi.ENABLE_INCREMENTAL_SUPPORT)
+                || graphqlContext.getBoolean(ExperimentalApi.ENABLE_INCREMENTAL_SUPPORT_V2));
     }
 
     @Internal

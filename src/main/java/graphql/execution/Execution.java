@@ -3,6 +3,7 @@ package graphql.execution;
 
 import com.google.common.collect.ImmutableList;
 import graphql.Directives;
+import graphql.ExperimentalApi;
 import graphql.EngineRunningState;
 import graphql.ExecutionInput;
 import graphql.ExecutionResult;
@@ -17,6 +18,9 @@ import graphql.Profiler;
 import graphql.execution.directives.OperationDirectivesResolver;
 import graphql.execution.directives.QueryAppliedDirective;
 import graphql.execution.incremental.IncrementalCallState;
+import graphql.execution.incremental.v2.IncrementalDirectiveChecks;
+import graphql.execution.incremental.v2.IncrementalExecution;
+import graphql.execution.incremental.v2.IncrementalExecutionParameters;
 import graphql.execution.instrumentation.Instrumentation;
 import graphql.execution.instrumentation.InstrumentationContext;
 import graphql.execution.instrumentation.InstrumentationState;
@@ -90,6 +94,11 @@ public class Execution {
         try {
             getOperationResult = NodeUtil.getOperation(document, executionInput.getOperationName());
             coercedVariables = coerceVariableValues(graphQLSchema, executionInput, getOperationResult.operationDefinition);
+            if (executionInput.getGraphQLContext().getBoolean(ExperimentalApi.ENABLE_INCREMENTAL_SUPPORT_V2)
+                    && getOperationResult.operationDefinition.getOperation() == OperationDefinition.Operation.SUBSCRIPTION) {
+                new IncrementalDirectiveChecks().checkSubscription(getOperationResult.operationDefinition, getOperationResult.fragmentsByName,
+                        coercedVariables, graphQLSchema, executionInput);
+            }
             normalizedVariableValues = normalizedVariableValues(graphQLSchema, executionInput, getOperationResult);
         } catch (RuntimeException rte) {
             if (rte instanceof GraphQLError) {
@@ -212,7 +221,8 @@ public class Execution {
                 .graphQLContext(graphQLContext)
                 .build();
 
-        MergedSelectionSet fields = fieldCollector.collectFields(
+        IncrementalExecutionParameters incremental = new IncrementalExecution().createParameters(executionContext, collectorParameters, operationDefinition, ResultPath.rootPath());
+        MergedSelectionSet fields = incremental != null ? incremental.getCollectedFields().toMergedSelectionSet() : fieldCollector.collectFields(
                 collectorParameters,
                 operationDefinition.getSelectionSet(),
                 executionContext.hasIncrementalSupport()
@@ -228,6 +238,7 @@ public class Execution {
                 .localContext(executionContext.getLocalContext())
                 .fields(fields)
                 .nonNullFieldValidator(nonNullableFieldValidator)
+                .incrementalExecutionParameters(incremental)
                 .path(path)
                 .build();
 
@@ -257,6 +268,7 @@ public class Execution {
 
         result = result.whenComplete(executeOperationCtx::onCompleted);
 
+        if (incremental != null) return new IncrementalExecution().complete(executionContext, result, incremental.getWork());
         return incrementalSupport(executionContext, result);
     }
 

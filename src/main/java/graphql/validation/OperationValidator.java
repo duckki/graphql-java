@@ -946,7 +946,7 @@ public class OperationValidator implements DocumentVisitor {
                 validateDeferDirectiveOnRootLevel(directive);
             }
             if (isRuleEnabled(OperationValidationRule.DEFER_DIRECTIVE_ON_VALID_OPERATION)) {
-                validateDeferDirectiveOnValidOperation(directive);
+                validateDeferDirectiveOnValidOperation(directive, ancestors);
             }
         }
     }
@@ -2132,12 +2132,21 @@ public class OperationValidator implements DocumentVisitor {
         }
     }
 
+    private boolean incrementalEnabled() {
+        return isExperimentalApiKeyEnabled(ExperimentalApi.ENABLE_INCREMENTAL_SUPPORT)
+                || isExperimentalApiKeyEnabled(ExperimentalApi.ENABLE_INCREMENTAL_SUPPORT_V2);
+    }
+
+    private boolean incrementalDirective(Directive directive) {
+        return Directives.DeferDirective.getName().equals(directive.getName());
+    }
+
     // --- DeferDirectiveOnRootLevel ---
     private void validateDeferDirectiveOnRootLevel(Directive directive) {
-        if (!isExperimentalApiKeyEnabled(ExperimentalApi.ENABLE_INCREMENTAL_SUPPORT)) {
+        if (!incrementalEnabled()) {
             return;
         }
-        if (!Directives.DeferDirective.getName().equals(directive.getName())) {
+        if (!incrementalDirective(directive)) {
             return;
         }
         GraphQLObjectType mutationType = validationContext.getSchema().getMutationType();
@@ -2153,19 +2162,39 @@ public class OperationValidator implements DocumentVisitor {
     }
 
     // --- DeferDirectiveOnValidOperation ---
-    private void validateDeferDirectiveOnValidOperation(Directive directive) {
-        if (!isExperimentalApiKeyEnabled(ExperimentalApi.ENABLE_INCREMENTAL_SUPPORT)) {
+    private void validateDeferDirectiveOnValidOperation(Directive directive, List<Node> ancestors) {
+        if (!incrementalEnabled()) {
             return;
         }
-        if (!Directives.DeferDirective.getName().equals(directive.getName())) {
+        if (!incrementalDirective(directive)) {
             return;
         }
+        if (isExperimentalApiKeyEnabled(ExperimentalApi.ENABLE_INCREMENTAL_SUPPORT_V2) && mayBeSkipped(ancestors)) return;
         OperationDefinition operationDefinition = Assert.assertNotNull(currentOperation);
         if (SUBSCRIPTION.equals(operationDefinition.getOperation()) &&
                 !ifArgumentMightBeFalse(directive)) {
             String message = i18n(MisplacedDirective, "IncrementalDirective.notAllowedSubscriptionOperation", directive.getName());
             addError(MisplacedDirective, directive.getSourceLocation(), message);
         }
+    }
+
+    private boolean mayBeSkipped(List<Node> ancestors) {
+        for (Node ancestor : ancestors) {
+            if (ancestor instanceof graphql.language.DirectivesContainer && conditionallyIncluded((graphql.language.DirectivesContainer<?>) ancestor)) return true;
+        }
+        return false;
+    }
+
+    private boolean conditionallyIncluded(graphql.language.DirectivesContainer<?> node) {
+        Directive skip = NodeUtil.findNodeByName(node.getDirectives(), "skip");
+        Directive include = NodeUtil.findNodeByName(node.getDirectives(), "include");
+        return nonConstantCondition(skip, false) || nonConstantCondition(include, true);
+    }
+
+    private boolean nonConstantCondition(@Nullable Directive directive, boolean unconditionalValue) {
+        if (directive == null || directive.getArgument("if") == null) return false;
+        Value<?> value = directive.getArgument("if").getValue();
+        return !(value instanceof BooleanValue) || ((BooleanValue) value).isValue() != unconditionalValue;
     }
 
     private boolean ifArgumentMightBeFalse(Directive directive) {
@@ -2181,8 +2210,8 @@ public class OperationValidator implements DocumentVisitor {
 
     // --- DeferDirectiveLabel ---
     private void validateDeferDirectiveLabel(Directive directive) {
-        if (!isExperimentalApiKeyEnabled(ExperimentalApi.ENABLE_INCREMENTAL_SUPPORT) ||
-                !Directives.DeferDirective.getName().equals(directive.getName()) ||
+        if (!incrementalEnabled() ||
+                !incrementalDirective(directive) ||
                 directive.getArguments().size() == 0) {
             return;
         }

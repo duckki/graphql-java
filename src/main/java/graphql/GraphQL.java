@@ -617,7 +617,7 @@ public class GraphQL {
             validationRulePredicate = rule -> rule != OperationValidationRule.GOOD_FAITH_INTROSPECTION && existing.test(rule);
         }
 
-        List<ValidationError> validationErrors = ParseAndValidate.validate(graphQLSchema, document, validationRulePredicate, locale, limits);
+        List<ValidationError> validationErrors = ParseAndValidate.validate(graphQLSchema, document, validationRulePredicate, locale, limits, executionInput.getGraphQLContext());
 
         validationCtx.onCompleted(validationErrors, null);
         return validationErrors;
