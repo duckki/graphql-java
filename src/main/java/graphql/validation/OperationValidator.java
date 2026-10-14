@@ -842,6 +842,7 @@ public class OperationValidator implements DocumentVisitor {
     }
 
     private void checkField(Field field) {
+        if (shouldRunDocumentLevelRules()) validateStreamDirective(field);
         if (shouldRunDocumentLevelRules()) {
             if (isRuleEnabled(OperationValidationRule.FIELDS_ON_CORRECT_TYPE)) {
                 validateFieldsOnCorrectType(field);
@@ -1623,6 +1624,12 @@ public class OperationValidator implements DocumentVisitor {
         List<Field> fields = new ArrayList<>();
         for (FieldAndType fieldAndType : fieldAndTypes) {
             Field field = fieldAndType.field;
+            if (isExperimentalApiKeyEnabled(ExperimentalApi.ENABLE_INCREMENTAL_SUPPORT_V2)
+                    && !fields.isEmpty() && (field.hasDirective("stream") || fields.get(0).hasDirective("stream"))) {
+                List<Field> conflicting = new ArrayList<>(fields);
+                conflicting.add(field);
+                return new Conflict("Fields '" + pathToString(path) + "' have overlapping @stream directives", conflicting);
+            }
             fields.add(field);
             if (name == null) {
                 name = field.getName();
@@ -2138,7 +2145,23 @@ public class OperationValidator implements DocumentVisitor {
     }
 
     private boolean incrementalDirective(Directive directive) {
-        return Directives.DeferDirective.getName().equals(directive.getName());
+        return Directives.DeferDirective.getName().equals(directive.getName())
+                || isExperimentalApiKeyEnabled(ExperimentalApi.ENABLE_INCREMENTAL_SUPPORT_V2) && "stream".equals(directive.getName());
+    }
+
+    private void validateStreamDirective(Field field) {
+        if (!isExperimentalApiKeyEnabled(ExperimentalApi.ENABLE_INCREMENTAL_SUPPORT_V2)) return;
+        Directive stream = NodeUtil.findNodeByName(field.getDirectives(), "stream");
+        if (stream == null) return;
+        GraphQLFieldDefinition definition = getFieldDefinition();
+        if (isRuleEnabled(OperationValidationRule.STREAM_DIRECTIVE_ON_LIST_FIELD) && definition != null && !(GraphQLTypeUtil.unwrapNonNull(definition.getType()) instanceof graphql.schema.GraphQLList)) {
+            addError(MisplacedDirective, stream.getSourceLocation(), "The @stream directive must be used on a list field");
+        }
+        Argument count = stream.getArgument("initialCount");
+        if (isRuleEnabled(OperationValidationRule.STREAM_DIRECTIVE_INITIAL_COUNT) && count != null && count.getValue() instanceof graphql.language.IntValue
+                && ((graphql.language.IntValue) count.getValue()).getValue().signum() < 0) {
+            addError(WrongType, stream.getSourceLocation(), "The @stream initialCount argument must be non-negative");
+        }
     }
 
     // --- DeferDirectiveOnRootLevel ---

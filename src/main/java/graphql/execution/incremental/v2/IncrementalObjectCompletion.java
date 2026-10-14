@@ -6,6 +6,7 @@ import graphql.execution.ExecutionStepInfo;
 import graphql.execution.ExecutionStrategyParameters;
 import graphql.execution.FieldCollectorParameters;
 import graphql.execution.MergedField;
+import graphql.execution.incremental.AlternativeCallContext;
 import graphql.schema.GraphQLObjectType;
 
 import java.util.function.Function;
@@ -22,6 +23,11 @@ public final class IncrementalObjectCompletion {
         CollectedFields fields = new IncrementalFieldCollector().collectSubfields(collector,
                 assertNotNull(incremental.getCollectedFields().getFields().get(field.getResultKey())));
         IncrementalExecutionParameters child = incremental.withFields(fields, parameters.getPath());
+        AlternativeCallContext alternative = parameters.getAlternativeCallContext();
+        if (alternative instanceof StreamCallContext) {
+            int count = new ExecutionPlan(fields, incremental.getParentUsages()).getImmediateFields().getFields().size();
+            ((StreamCallContext) alternative).configure(parameters.getPath(), count);
+        }
         ExecutionStepInfo step = parameters.getExecutionStepInfo().changeTypeWithPreservedNonNull(objectType);
         ExecutionStrategyParameters childParameters = parameters.transform(builder -> builder
                 .executionStepInfo(step).fields(fields.toMergedSelectionSet()).source(value).incrementalExecutionParameters(child));

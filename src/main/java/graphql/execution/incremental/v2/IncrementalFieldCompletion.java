@@ -19,7 +19,7 @@ public final class IncrementalFieldCompletion {
     public Object resolve(ExecutionContext context, ExecutionStrategyParameters parameters, Supplier<ExecutionStepInfo> step,
                            Function<ExecutionStrategyParameters, Object> resolveField) {
         AlternativeCallContext alternative = parameters.getAlternativeCallContext();
-        if (alternative == null || parameters.getPath().getLevel() != alternative.getStartLevel()) return resolveField.apply(parameters);
+        if (alternative == null || alternative instanceof StreamCallContext || parameters.getPath().getLevel() != alternative.getStartLevel()) return resolveField.apply(parameters);
         InstrumentationFieldParameters fieldParameters = new InstrumentationFieldParameters(context, step);
         InstrumentationContext<Object> instrumentation = nonNullCtx(context.getInstrumentation()
                 .beginDeferredField(fieldParameters, context.getInstrumentationState()));

@@ -189,6 +189,12 @@ public enum OperationValidationRule {
     /** Defer directive must not be used in subscription operations. Requires operation context. */
     DEFER_DIRECTIVE_ON_VALID_OPERATION,
 
+    /** Stream directive must be used on a list field. */
+    STREAM_DIRECTIVE_ON_LIST_FIELD,
+
+    /** Stream directive initialCount must be non-negative. */
+    STREAM_DIRECTIVE_INITIAL_COUNT,
+
     /** Good faith introspection check. */
     GOOD_FAITH_INTROSPECTION,
 }

@@ -31,7 +31,7 @@ class IncrementalPolymorphismTest extends Specification {
     GraphQL engine(RuntimeWiring.Builder wiring = RuntimeWiring.newRuntimeWiring()) {
         TypeResolver resolver = { env -> env.schema.getObjectType(env.object.__typename) }
         ['Node', 'Named', 'Search'].each { wiring.type(TypeRuntimeWiring.newTypeWiring(it).typeResolver(resolver)) }
-        def schema = TestUtil.schema(sdl, wiring.build())
+        def schema = GraphQLSchema.newSchema(TestUtil.schema(sdl, wiring.build())).additionalDirective(Directives.StreamDirective).build()
         GraphQL.newGraphQL(schema).build()
     }
 
@@ -104,5 +104,63 @@ class IncrementalPolymorphismTest extends Specification {
         then:
         calls.count('name') == 2
         updates.collectMany { it.incremental ?: [] }*.data == [[name: 'Ada'], [name: 'Grace']]
+    }
+    def 'abstract streamed items publish matching named children at their indexed paths'() {
+        given:
+        def root = [search: [[__typename: 'User', id: '1', name: 'Ada'], [__typename: 'Product', id: '2', name: 'Book']]]
+        def query = '{ search @stream(initialCount: 1) { __typename ... on Named { id ...Details @defer(label: "details") } } } fragment Details on Named { name }'
+
+        when:
+        def result = engine().execute(input(query, root))
+        def updates = collect(result)
+
+        then:
+        result.errors.empty
+        (result.pending*.path + updates.collectMany { it.pending ?: [] }*.path).containsAll([['search'], ['search', 0], ['search', 1]])
+        result.data == [search: [[__typename: 'User', id: '1']]]
+        updates.collectMany { it.incremental ?: [] }.findAll { it.items }.collectMany { it.items } == [[__typename: 'Product', id: '2']]
+        updates.collectMany { it.incremental ?: [] }.findAll { it.data }*.data == [[name: 'Ada'], [name: 'Book']]
+        !updates.last().hasNext
+    }
+
+
+    def 'mutation roots await the initial prefix serially while nested delivery stays lazy'() {
+        given:
+        def first = new CompletableFuture()
+        def prefix = new CompletableFuture()
+        def calls = new CopyOnWriteArrayList<String>()
+        def wiring = RuntimeWiring.newRuntimeWiring().type(TypeRuntimeWiring.newTypeWiring('Mutation')
+                .dataFetcher('first', { calls.add('first'); first })
+                .dataFetcher('second', { calls.add('second'); [__typename: 'User', id: '2', name: 'Grace'] }))
+                .type(TypeRuntimeWiring.newTypeWiring('User').dataFetcher('name', { env -> calls.add('name'); env.source.name }))
+        def query = 'mutation { first { id values @stream(initialCount: 1) ... @defer { name } } second { id ... @defer { name } } }'
+        def initial = engine(wiring).executeAsync(input(query, [:]))
+
+        expect:
+        calls == ['first']
+
+        when:
+        first.complete([__typename: 'User', id: '1', name: 'Ada', values: [prefix, 2]])
+
+        then:
+        !initial.done
+        calls == ['first']
+
+        when:
+        prefix.complete(1)
+        def result = initial.get(5, TimeUnit.SECONDS)
+
+        then:
+        calls == ['first', 'second']
+        result.data == [first: [id: '1', values: [1]], second: [id: '2']]
+
+        when:
+        def updates = collect(result)
+
+        then:
+        calls.count('name') == 2
+        updates.collectMany { it.incremental ?: [] }.findAll { it.items }.collectMany { it.items } == [2]
+        updates.collectMany { it.incremental ?: [] }.findAll { it.data }*.data == [[name: 'Ada'], [name: 'Grace']]
+        !updates.last().hasNext
     }
 }

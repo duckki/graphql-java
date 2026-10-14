@@ -21,6 +21,7 @@ import graphql.execution.incremental.v2.IncrementalExecutionParameters;
 import graphql.execution.incremental.v2.IncrementalExecutionSupport;
 import graphql.execution.incremental.v2.IncrementalFieldCompletion;
 import graphql.execution.incremental.v2.IncrementalObjectCompletion;
+import graphql.execution.incremental.v2.IncrementalStreamSupport;
 import graphql.execution.instrumentation.ExecuteObjectInstrumentationContext;
 import graphql.execution.instrumentation.FieldFetchingInstrumentationContext;
 import graphql.execution.instrumentation.Instrumentation;
@@ -889,6 +890,12 @@ public abstract class ExecutionStrategy {
      * @return a {@link FieldValueInfo}
      */
     protected FieldValueInfo completeValueForList(ExecutionContext executionContext, ExecutionStrategyParameters parameters, Iterable<Object> iterableValues) {
+        if (parameters.getIncrementalExecutionParameters() != null) {
+            FieldValueInfo streamed = new IncrementalStreamSupport().complete(executionContext, parameters, iterableValues,
+                    itemParameters -> completeIncrementalListItem(executionContext, itemParameters));
+            if (streamed != null) return handleIncrementalListResult(executionContext, streamed);
+        }
+
 
         OptionalInt size = FpKit.toSize(iterableValues);
         ExecutionStepInfo executionStepInfo = parameters.getExecutionStepInfo();
@@ -963,6 +970,24 @@ public abstract class ExecutionStrategy {
             listOrPromiseToList = listResults;
         }
         return new FieldValueInfo(LIST, listOrPromiseToList, fieldValueInfos);
+    }
+
+    private FieldValueInfo completeIncrementalListItem(ExecutionContext context, ExecutionStrategyParameters parameters) {
+        graphql.Assert.assertNotNull(parameters.getIncrementalExecutionParameters()).getWork().checkRunning();
+        if (incrementAndCheckMaxNodesExceeded(context)) return new FieldValueInfo(NULL, null);
+        Object fetched = unboxPossibleDataFetcherResult(context, parameters, parameters.getSource());
+        ExecutionStrategyParameters item = parameters.transform(builder -> builder
+                .source(FetchedValue.getFetchedValue(fetched)).localContext(FetchedValue.getLocalContext(fetched, parameters.getLocalContext())));
+        return completeValue(context, item);
+    }
+
+    private FieldValueInfo handleIncrementalListResult(ExecutionContext context, FieldValueInfo streamed) {
+        CompletableFuture<Object> result = new CompletableFuture<>();
+        streamed.getFieldValueFuture().whenComplete((value, exception) -> {
+            if (exception != null) handleValueException(result, exception, context);
+            else result.complete(value);
+        });
+        return new FieldValueInfo(LIST, result, streamed.getFieldValueInfos());
     }
 
     protected <T> void handleValueException(CompletableFuture<T> overallResult, Throwable e, ExecutionContext executionContext) {

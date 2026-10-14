@@ -16,7 +16,7 @@ class IncrementalTransitionTest extends Specification {
     String sdl = 'type Query { user: User hello: String } type User { id: ID! name: String } type Subscription { event: User }'
 
     GraphQL engine(IncrementalPreparsedCache cache) {
-        def schema = TestUtil.schema(sdl)
+        def schema = GraphQLSchema.newSchema(TestUtil.schema(sdl)).additionalDirective(Directives.StreamDirective).build()
         GraphQL.newGraphQL(schema).preparsedDocumentProvider(cache).build()
     }
 
@@ -90,4 +90,24 @@ class IncrementalTransitionTest extends Specification {
         }
         cache.computations.get() == 1
     }
+    def 'stream validation cache partitions the new flag in both warming orders'() {
+        given:
+        def cache = new IncrementalPreparsedCache()
+        def engine = engine(cache)
+        def query = '{ hello @stream }'
+
+        expect:
+        enabled.each { modern ->
+            def result = execute(engine, query, false, modern)
+            assert result.errors.empty == !modern
+            if (!modern) assert result.data == [hello: 'hello']
+        }
+        cache.computations.get() == 2
+        cache.entries.size() == 2
+
+        where:
+        enabled << [[false, true, false, true], [true, false, true, false]]
+    }
+
+
 }
