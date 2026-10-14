@@ -17,6 +17,15 @@ import java.util.Objects;
  */
 @ExperimentalApi
 public abstract class IncrementalPayload {
+    /** @return the delivery ID for the new protocol, or null for legacy payloads */
+    public @Nullable String getId() {
+        return null;
+    }
+
+    /** @return the path relative to the pending notice, or null when absent */
+    public @Nullable List<Object> getSubPath() {
+        return null;
+    }
     private final List<Object> path;
     private final String label;
     private final List<GraphQLError> errors;

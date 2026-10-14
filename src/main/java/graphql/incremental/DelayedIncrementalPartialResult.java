@@ -2,6 +2,7 @@ package graphql.incremental;
 
 import graphql.ExperimentalApi;
 import org.jspecify.annotations.Nullable;
+import org.jspecify.annotations.NullMarked;
 
 import java.util.List;
 import java.util.Map;
@@ -13,7 +14,17 @@ import java.util.Map;
  * {@link DelayedIncrementalPartialResult}
  */
 @ExperimentalApi
+@NullMarked
 public interface DelayedIncrementalPartialResult {
+    /** @return newly pending delivery notices */
+    default List<PendingPayload> getPending() {
+        return java.util.Collections.emptyList();
+    }
+
+    /** @return completed delivery notices */
+    default List<CompletedPayload> getCompleted() {
+        return java.util.Collections.emptyList();
+    }
     /**
      * @return a list of defer and/or stream payloads.
      */

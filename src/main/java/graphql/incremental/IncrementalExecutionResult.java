@@ -3,6 +3,7 @@ package graphql.incremental;
 import graphql.ExecutionResult;
 import graphql.ExperimentalApi;
 import org.jspecify.annotations.Nullable;
+import org.jspecify.annotations.NullMarked;
 import org.reactivestreams.Publisher;
 
 import java.util.List;
@@ -83,7 +84,12 @@ import java.util.List;
  * The execution behaviour should match what we get from running Apollo Server 4.9.5 with graphql-js v17.0.0-alpha.2
  */
 @ExperimentalApi
+@NullMarked
 public interface IncrementalExecutionResult extends ExecutionResult {
+    /** @return pending delivery notices, or an empty list for the legacy protocol */
+    default List<PendingPayload> getPending() {
+        return java.util.Collections.emptyList();
+    }
     /**
      * Indicates whether there are pending incremental data.
      *
