@@ -11,10 +11,11 @@ Add the directives to the schema and enable the new execution-context option:
 ```java
 GraphQLSchema incrementalSchema = GraphQLSchema.newSchema(schema)
         .additionalDirective(Directives.DeferDirective)
+        .additionalDirective(Directives.StreamDirective)
         .build();
 GraphQL graphQL = GraphQL.newGraphQL(incrementalSchema).build();
 ExecutionInput input = ExecutionInput.newExecutionInput()
-        .query("{ users { id ... @defer { name } } }")
+        .query("{ users @stream(initialCount: 1) { id ... @defer { name } } }")
         .graphQLContext(Map.of(ExperimentalApi.ENABLE_INCREMENTAL_SUPPORT_V2, true))
         .build();
 ExecutionResult initial = graphQL.execute(input);
@@ -27,7 +28,7 @@ implementation. The existing eager-defer option applies to the legacy implementa
 new incremental work starts when its result publisher is subscribed.
 
 The result remains an `IncrementalExecutionResult`. Its `getPending()` method describes
-open defer delivery IDs, and `getIncrementalItemPublisher()` returns a single-subscriber
+open delivery IDs, and `getIncrementalItemPublisher()` returns a single-subscriber
 Reactive Streams publisher of `DelayedIncrementalPartialResult` updates. Ordinary
 operations and operations with no effective incremental work return an ordinary
 `ExecutionResult`, with no `hasNext` entry.
@@ -55,8 +56,9 @@ A subsequent result completes the ID:
 ```
 
 `PendingPayload` carries an ID, path and optional label, preserving an explicitly supplied null label. `CompletedPayload` carries an
-ID and fatal errors, when present. `IncrementalPayloadV2` carries deferred object `data`, an ID, scoped errors, and an optional `subPath` relative to
-its pending notice. New payloads omit the legacy
+ID and fatal errors, when present. `IncrementalPayloadV2` carries either deferred object
+`data` or streamed `items`, an ID, scoped errors, and an optional `subPath` relative to
+its pending notice. Nullable item values are retained. New payloads omit the legacy
 `path` and `label` fields; clients associate them through the pending ID.
 
 `getPending()` and `getCompleted()` return empty lists for legacy results. Legacy
@@ -68,7 +70,7 @@ lists. All new public payloads snapshot their collections and have builders and
 ## Execution and lifecycle
 
 The implementation follows the alternative work-queue model from the Lean porting
-guide. Java object identities distinguish usages, groups, tasks and scopes. Immutable
+guide. Java object identities distinguish usages, groups, tasks and sources. Immutable
 defer-context overlays share inherited bindings. An iterative ancestry index partitions
 merged fields into tasks, preserving collector and owner order. Overlapping selections
 resolve a field once; the queue publishes a shared task's value once and chooses an
@@ -77,21 +79,31 @@ announced owner with the deepest path.
 Each exposed scope is registered completely before ownership transfers or child
 computations start. Pending counters and explicit failure state distinguish unfinished
 work, successful work, and failure with zero counted errors. Empty defer groups are
-pruned. Child notices are released when their producer's data is
+pruned. Child notices and held streams are released when their producer's data is
 published. Failed subtrees are removed iteratively, and last-owner removal disposes
 unpublished work during that walk. Failed ancestry cannot revive through late results.
 
-Publisher demand controls delivery. Each deferred computation starts lazily after
-subscription. Cancellation stops activation, disposes in-flight producer scopes and
-suppresses late results. Failed ancestry cannot be revived by a late future. Queue
-records and wire IDs are retired at response completion, scoped DataLoader accounting
-is released, and response-completion instrumentation runs once. `ExecutionInput.cancel()`
-also closes the publisher. Nullable errors stay in patches; errors escaping a defer
-boundary appear in its completion notice. Prior scoped errors are retained.
+`@stream` affects the outermost list. It completes the initial prefix normally and
+completes subsequent items sequentially. Source pulls run independently of wire delivery. Sources use the engine's existing iterable and
+array representations; streamed items may also be `CompletableFuture` values. One
+original item may await graph admission per source. Admission acknowledges that item
+before advancing its source. Subscriber demand controls graph reduction, bounding
+source progress even with a paused consumer. Execution yields after 64 serialized
+commands to avoid monopolizing the subscribing thread with a long synchronous source.
+
+Cancellation stops activation immediately, disposes in-flight producer scopes, closes an
+`AutoCloseable` iterator (or its iterable when the iterator is not closeable), and
+suppresses late mapping. Source exhaustion and cancellation close the selected resource
+at most once. Queue records and wire IDs are retired at response completion, scoped
+DataLoader accounting is released, and the response-completion instrumentation hook is
+invoked once after cancellation cleanup requests. `ExecutionInput.cancel()` also closes
+the incremental publisher. Nullable errors remain in patches; errors escaping a defer
+or stream boundary appear in its completion notice. Prior scoped errors are retained.
 
 Mutation root fields retain serial execution. Active incremental directives are
 forbidden in subscriptions, including conditional directives that become enabled by
-coerced variables. Directive validation checks placement and static unique labels. Request validation receives the request's
+coerced variables. Directive validation checks placement, static unique labels, list
+fields, and overlapping streamed selections. Request validation receives the request's
 GraphQL context. If a custom preparsed-document cache is shared across different
 validation configurations, its keys must distinguish those configurations.
 
@@ -104,18 +116,25 @@ reuse ordinary field execution through callbacks from the existing strategy. Leg
 result implementations are unchanged; v2 results implement the shared interfaces.
 
 Review payloads first, then collection and planning, queue and publication, and finally
-the guarded engine hooks and compatibility tests. V2 is disabled by default. This first
-stage supports defer only; stream execution and oracle tooling are separate follow-ups.
+the guarded engine hooks and compatibility tests. V2 is disabled by default. Stream support extends the same work queue with scoped sources. The stream source lifecycle
+is reviewed after the defer engine and oracle foundations.
 
 ## Verification
 
-Spock tests cover wire serialization and snapshots, legacy compatibility, shared owners,
-empty and nested fragments, list indices, null propagation, asynchronous errors,
-DataLoader integration, cancellation and late futures. Transition tests reuse warm
-preparsed documents across flag combinations and separate validation cache entries by
-configuration. Native tests cover inherited interfaces, unions and serial mutations with
-lazy nested work. The alternative model is retained from the supplied Lean porting guide.
+Spock tests cover the wire format, legacy compatibility, shared owners, empty/nested
+fragments, null propagation, stream prefixes, nested lists, nullable and fatal item
+errors, DataLoader integration, demand, cancellation, late futures and resource cleanup.
+Transition regressions reuse warm preparsed documents across flag combinations and separate
+validation cache entries by configuration. Native tests cover inherited interface and union
+conditions, serial mutation prefixes with lazy nested work, held-source cancellation, and
+100 barrier-released cancellation/completion races.
+The optional [Java–Lean differential harness](../fuzz/incremental/README.md) independently
+executes valid generated operations and replays the shared JavaScript semantic corpus.
+The small harness covers sync and completed-future resolvers, inline and named documents,
+rotating demand, replay and shrinking, including the added stream semantic corpus.
+Delayed schedules, native fuzz properties and coverage profiles are a separate follow-up.
 
-The optional [defer differential harness](../fuzz/incremental/README.md) adds exact
-comparisons with the pinned Lean oracle, saved corpus replay and shrinking. It is
-separate from ordinary tests and adds no runtime dependencies.
+Differential agreement tests the finite modeled subset. It does not constitute a formal
+Java refinement proof or certify arbitrary asynchronous callback schedules, infinite sources,
+cleanup exceptions, or transport behavior. The engine does not implement an HTTP
+transport; applications serialize each result's `toSpecification()` map.

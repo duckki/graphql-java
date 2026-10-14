@@ -1,0 +1,171 @@
+{
+  "format": 1,
+  "fixtureName": "failed-defer-surviving-stream",
+  "input": {
+    "seed": 0,
+    "selections": [
+      {
+        "kind": "fragment",
+        "selections": [
+          {
+            "kind": "field",
+            "name": "a",
+            "responseName": "a",
+            "selections": [],
+            "directives": []
+          },
+          {
+            "kind": "field",
+            "name": "required",
+            "responseName": "required",
+            "selections": [],
+            "directives": []
+          },
+          {
+            "kind": "field",
+            "name": "b",
+            "responseName": "b",
+            "selections": [],
+            "directives": []
+          }
+        ],
+        "directives": [
+          {
+            "name": "defer",
+            "if": true,
+            "label": "failed"
+          }
+        ]
+      },
+      {
+        "kind": "fragment",
+        "selections": [
+          {
+            "kind": "field",
+            "name": "values",
+            "responseName": "values",
+            "selections": [],
+            "directives": [
+              {
+                "name": "stream",
+                "if": true,
+                "initialCount": 0,
+                "label": "live"
+              }
+            ]
+          }
+        ],
+        "directives": [
+          {
+            "name": "defer",
+            "if": true,
+            "label": "surviving"
+          }
+        ]
+      }
+    ],
+    "root": {
+      "__typename": "Query",
+      "a": {
+        "$error": true
+      },
+      "b": {
+        "$error": true
+      },
+      "required": null,
+      "values": [
+        "x",
+        "y"
+      ],
+      "strictValues": [
+        "x",
+        "y"
+      ],
+      "user": {
+        "__typename": "Item",
+        "id": "id",
+        "name": "name",
+        "required": "required",
+        "values": [
+          "x",
+          "y"
+        ],
+        "strictValues": [
+          "x",
+          "y"
+        ],
+        "friend": null,
+        "friends": []
+      },
+      "users": [
+        {
+          "__typename": "Item",
+          "id": "id",
+          "name": "name",
+          "required": "required",
+          "values": [
+            "x",
+            "y"
+          ],
+          "strictValues": [
+            "x",
+            "y"
+          ],
+          "friend": null,
+          "friends": []
+        },
+        {
+          "__typename": "Item",
+          "id": "id",
+          "name": "name",
+          "required": "required",
+          "values": [
+            "x",
+            "y"
+          ],
+          "strictValues": [
+            "x",
+            "y"
+          ],
+          "friend": null,
+          "friends": []
+        }
+      ],
+      "strictUsers": [
+        {
+          "__typename": "Item",
+          "id": "id",
+          "name": "name",
+          "required": "required",
+          "values": [
+            "x",
+            "y"
+          ],
+          "strictValues": [
+            "x",
+            "y"
+          ],
+          "friend": null,
+          "friends": []
+        },
+        {
+          "__typename": "Item",
+          "id": "id",
+          "name": "name",
+          "required": "required",
+          "values": [
+            "x",
+            "y"
+          ],
+          "strictValues": [
+            "x",
+            "y"
+          ],
+          "friend": null,
+          "friends": []
+        }
+      ]
+    },
+    "variables": {}
+  }
+}

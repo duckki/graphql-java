@@ -1,0 +1,113 @@
+{
+  "seed": 1000002,
+  "family": "abstract-regression",
+  "variables": {},
+  "root": {
+    "search": [
+      {
+        "__typename": "Item",
+        "id": "1",
+        "name": "Ada",
+        "itemOnly": "item"
+      },
+      {
+        "__typename": "Other",
+        "id": "2",
+        "name": "Book",
+        "otherOnly": "other"
+      }
+    ],
+    "__typename": "Query"
+  },
+  "selections": [
+    {
+      "kind": "field",
+      "name": "search",
+      "responseName": "search",
+      "selections": [
+        {
+          "kind": "fragment",
+          "typeCondition": "Node",
+          "selections": [
+            {
+              "kind": "field",
+              "name": "id",
+              "responseName": "id",
+              "selections": [],
+              "directives": []
+            }
+          ],
+          "directives": []
+        },
+        {
+          "kind": "fragment",
+          "typeCondition": "Named",
+          "selections": [
+            {
+              "kind": "field",
+              "name": "name",
+              "responseName": "name",
+              "selections": [],
+              "directives": []
+            }
+          ],
+          "directives": [
+            {
+              "name": "defer",
+              "if": true,
+              "label": "common"
+            }
+          ]
+        },
+        {
+          "kind": "fragment",
+          "typeCondition": "Item",
+          "selections": [
+            {
+              "kind": "field",
+              "name": "itemOnly",
+              "responseName": "itemOnly",
+              "selections": [],
+              "directives": []
+            }
+          ],
+          "directives": [
+            {
+              "name": "defer",
+              "if": true,
+              "label": "item"
+            }
+          ]
+        },
+        {
+          "kind": "fragment",
+          "typeCondition": "Other",
+          "selections": [
+            {
+              "kind": "field",
+              "name": "otherOnly",
+              "responseName": "otherOnly",
+              "selections": [],
+              "directives": []
+            }
+          ],
+          "directives": [
+            {
+              "name": "defer",
+              "if": true,
+              "label": "other"
+            }
+          ]
+        }
+      ],
+      "directives": [
+        {
+          "name": "stream",
+          "if": true,
+          "label": null,
+          "initialCount": 0
+        }
+      ]
+    }
+  ]
+}

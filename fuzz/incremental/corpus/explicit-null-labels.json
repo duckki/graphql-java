@@ -1,0 +1,50 @@
+{
+  "format": 1,
+  "fixtureName": "explicit-null-labels",
+  "input": {
+    "seed": 0,
+    "root": {
+      "__typename": "Query",
+      "values": [
+        "x"
+      ],
+      "b": "B"
+    },
+    "variables": {},
+    "selections": [
+      {
+        "kind": "field",
+        "name": "values",
+        "responseName": "values",
+        "directives": [
+          {
+            "name": "stream",
+            "if": true,
+            "label": null,
+            "initialCount": 0
+          }
+        ],
+        "selections": []
+      },
+      {
+        "kind": "fragment",
+        "directives": [
+          {
+            "name": "defer",
+            "if": true,
+            "label": null
+          }
+        ],
+        "selections": [
+          {
+            "kind": "field",
+            "name": "b",
+            "responseName": "b",
+            "directives": [],
+            "selections": []
+          }
+        ]
+      }
+    ]
+  }
+}

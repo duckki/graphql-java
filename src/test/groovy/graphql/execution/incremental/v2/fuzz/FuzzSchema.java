@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import graphql.GraphQL;
+import graphql.Directives;
 import graphql.GraphQLException;
 import graphql.Internal;
 import graphql.schema.DataFetcher;
@@ -51,7 +52,7 @@ public final class FuzzSchema implements AutoCloseable {
                 .type(TypeRuntimeWiring.newTypeWiring("Named").typeResolver(new FuzzTypeResolver()))
                 .type(TypeRuntimeWiring.newTypeWiring("Search").typeResolver(new FuzzTypeResolver())).build();
         GraphQLSchema generated = new SchemaGenerator().makeExecutableSchema(new SchemaParser().parse(EXTENDED_SDL), wiring);
-        schema = generated;
+        schema = GraphQLSchema.newSchema(generated).additionalDirective(Directives.StreamDirective).build();
         graphQL = GraphQL.newGraphQL(schema).build();
     }
 

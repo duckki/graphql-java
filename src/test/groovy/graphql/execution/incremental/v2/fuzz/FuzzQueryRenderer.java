@@ -86,6 +86,7 @@ public final class FuzzQueryRenderer {
         String name = directive.path("name").asText();
         String result = "@" + name + "(if: " + value(directive.get("if"));
         if (directive.has("label")) result += ", label: " + value(directive.get("label"));
+        if (name.equals("stream")) result += ", initialCount: " + value(directive.get("initialCount"));
         return result + ")";
     }
 

@@ -39,7 +39,7 @@ public final class IncrementalDifferentialFuzzer {
         Path source = Paths.get("fuzz/incremental/lean/NativeOracle.lean").toAbsolutePath();
         String executable = System.getProperty("leanOracle");
         report.put("format", 2).put("modelCommit", LeanOracle.MODEL_COMMIT).put("executionPolicy", "eager")
-                .put("scope", "defer").put("seed", seed).put("cases", cases).put("status", "failed")
+                .put("scope", "defer-and-stream").put("seed", seed).put("cases", cases).put("status", "failed")
                 .put("javaSourceSha256", sourceHash(Paths.get("src/main/java")))
                 .put("harnessSha256", sourceHash(Paths.get("src/test/groovy/graphql/execution/incremental/v2/fuzz")));
         try (LeanOracle oracle = new LeanOracle(Paths.get(leanProject), source, executable == null ? null : Paths.get(executable))) {

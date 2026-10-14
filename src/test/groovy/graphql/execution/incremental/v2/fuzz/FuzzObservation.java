@@ -72,7 +72,8 @@ public final class FuzzObservation {
         require(open.contains(id), "Patch refers to closed or unknown ID " + id);
         JsonNode target = at(data, paths.get(id));
         if (patch.has("subPath")) target = at(target, patch.get("subPath"));
-        mergeFields(target, patch.get("data"));
+        if (patch.has("items")) appendItems(target, patch.get("items"));
+        else mergeFields(target, patch.get("data"));
         errors += errorCount(patch.path("errors"));
     }
 
@@ -84,6 +85,11 @@ public final class FuzzObservation {
         }
         require(current != null, "Patch target is missing");
         return current;
+    }
+
+    private void appendItems(JsonNode target, JsonNode items) {
+        require(target.isArray(), "Stream patch target is not a list");
+        items.forEach(item -> ((ArrayNode) target).add(item.deepCopy()));
     }
 
     private void mergeFields(JsonNode target, JsonNode fields) {
