@@ -8,7 +8,7 @@ property lanes address the gaps measured in the [coverage evaluation](evaluation
 
 ## Profiles and commands
 
-Use a clean graphql-lean checkout at `0c0cd04cdf4d05805a9a0510fe341d10889ffa9f`, with its
+Use a clean graphql-lean checkout at `aa3f4ee870c7b865b81720aa672d9052a27b3695`, with its
 imported libraries built and `lake` on PATH. The normal Java build has no Lean dependency.
 There are no new dependencies; the optional target uses existing test-scoped Jackson and
 the project's existing JaCoCo plugin.

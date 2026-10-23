@@ -7,6 +7,7 @@ import graphql.execution.ResultPath;
 import graphql.execution.incremental.AlternativeCallContext;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 import static graphql.Assert.assertNotNull;
 
@@ -25,5 +26,14 @@ public final class IncrementalErrorSupport {
             if (errors.stream().anyMatch(existing -> path.toList().equals(existing.getPath()))) return;
             alternative.addError(error);
         }
+    }
+
+    public static boolean propagate(ExecutionStrategyParameters parameters, CompletableFuture<?> result, Throwable exception) {
+        AlternativeCallContext alternative = parameters.getAlternativeCallContext();
+        if (parameters.getIncrementalExecutionParameters() == null || alternative == null
+                || parameters.getPath().getLevel() != alternative.getStartLevel() - 1) return false;
+        if (alternative instanceof StreamCallContext && !parameters.getExecutionStepInfo().isNonNullType()) return false;
+        result.completeExceptionally(exception);
+        return true;
     }
 }

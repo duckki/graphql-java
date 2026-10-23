@@ -2,7 +2,7 @@
 
 The new implementation is opt-in and coexists with the existing defer implementation.
 It targets [graphql/graphql-spec PR #1110 at 045e193](https://github.com/graphql/graphql-spec/tree/045e19363c2b55f127960bd3b5e8072a15b29aec), matching the supplied
-`graphql-lean` model at `0c0cd04cdf4d05805a9a0510fe341d10889ffa9f`.
+`graphql-lean` model at `aa3f4ee870c7b865b81720aa672d9052a27b3695`.
 
 ## Enable the new implementation
 
@@ -71,20 +71,25 @@ lists. All new public payloads snapshot their collections and have builders and
 
 The implementation follows the alternative work-queue model from the Lean porting
 guide. Java object identities distinguish usages, groups, tasks and sources. Immutable
-defer-context overlays share inherited bindings. An iterative ancestry index partitions
+defer-context overlays share inherited bindings. Ordered declarations remain separate from task contributors and follow immediate-field
+work; an absent parent cannot promote a late child to a root. An iterative ancestry index partitions
 merged fields into tasks, preserving collector and owner order. Overlapping selections
 resolve a field once; the queue publishes a shared task's value once and chooses an
 announced owner with the deepest path.
 
 Each exposed scope is registered completely before ownership transfers or child
-computations start. Pending counters and explicit failure state distinguish unfinished
-work, successful work, and failure with zero counted errors. Empty defer groups are
-pruned. Child notices and held streams are released when their producer's data is
+computations start. Pending counters track successful settlement. Rejected outcomes stay on their computations,
+including failures with zero counted errors, until their remaining owners are removed. Empty defer groups are
+pruned. Startup inspects every already available task rejection before starting private
+work. A cached failure removes its group immediately and queues one aggregated completion
+notice at its FIFO position. Queued failure notices keep the queue alive after roots disappear.
+Child notices and held streams are released when their producer's data is
 published. Failed subtrees are removed iteratively, and last-owner removal disposes
 unpublished work during that walk. Failed ancestry cannot revive through late results.
 
 `@stream` affects the outermost list. It completes the initial prefix normally and
-completes subsequent items sequentially. Source pulls run independently of wire delivery. Sources use the engine's existing iterable and
+completes subsequent items sequentially. A prefix ending exactly at exhaustion retains
+an empty stream boundary; a prefix extending beyond exhaustion returns an ordinary list. Source pulls run independently of wire delivery. Sources use the engine's existing iterable and
 array representations; streamed items may also be `CompletableFuture` values. One
 original item may await graph admission per source. Admission acknowledges that item
 before advancing its source. Subscriber demand controls graph reduction, bounding
@@ -97,8 +102,9 @@ suppresses late mapping. Source exhaustion and cancellation close the selected r
 at most once. Queue records and wire IDs are retired at response completion, scoped
 DataLoader accounting is released, and the response-completion instrumentation hook is
 invoked once after cancellation cleanup requests. `ExecutionInput.cancel()` also closes
-the incremental publisher. Nullable errors remain in patches; errors escaping a defer
-or stream boundary appear in its completion notice. Prior scoped errors are retained.
+the incremental publisher. Delivered patches retain all collected diagnostics. A discarded deferred object or streamed item reports
+its selected escaping cause in the completion notice, separately from the complete
+diagnostic inventory. Ordinary results and the initial envelope retain collected errors.
 
 Mutation root fields retain serial execution. Active incremental directives are
 forbidden in subscriptions, including conditional directives that become enabled by

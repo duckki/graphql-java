@@ -19,7 +19,7 @@ import java.util.concurrent.TimeUnit;
 
 @Internal
 public final class LeanOracle implements AutoCloseable {
-    public static final String MODEL_COMMIT = "0c0cd04cdf4d05805a9a0510fe341d10889ffa9f";
+    public static final String MODEL_COMMIT = "aa3f4ee870c7b865b81720aa672d9052a27b3695";
     private final ObjectMapper json = new ObjectMapper();
     private final Process process;
     private final BufferedReader output;
