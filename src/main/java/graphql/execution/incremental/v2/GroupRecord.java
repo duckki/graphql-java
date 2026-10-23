@@ -1,6 +1,5 @@
 package graphql.execution.incremental.v2;
 
-import graphql.GraphQLError;
 import graphql.Internal;
 
 import java.util.ArrayList;
@@ -12,7 +11,5 @@ import java.util.Set;
 public final class GroupRecord {
     public final List<DeliveryGroup> children = new ArrayList<>();
     public final Set<DeferredTask> tasks = new LinkedHashSet<>();
-    public final List<GraphQLError> errors = new ArrayList<>();
     public int pending;
-    public boolean failed;
 }

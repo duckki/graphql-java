@@ -1,8 +1,9 @@
 # Incremental differential fuzzing
 
 This optional task compares the defer and stream v2 executor against the supplied Lean
-alternative model, pinned to `0c0cd04cdf4d05805a9a0510fe341d10889ffa9f`.
-The adapter imports the unchanged executor and work queue. Lean runs eagerly with a
+alternative model, pinned to `aa3f4ee870c7b865b81720aa672d9052a27b3695`.
+The adapter imports the unchanged executor and work queue, including ordered group
+declarations, delivery-cause projections and queued startup-failure notices. Lean runs eagerly with a
 finite admissible task-first schedule. Java runs independently through its native API.
 
 ```sh

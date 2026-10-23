@@ -34,6 +34,7 @@ public final class IncrementalWorkQueue {
     private final List<PendingPayload> initialPending = new ArrayList<>();
     private volatile boolean stopped;
     private boolean started;
+    private int pendingGroupFailures;
 
     public IncrementalWorkQueue(IncrementalWork work, Runnable onFinished) {
         control = work.getControl();
@@ -77,7 +78,7 @@ public final class IncrementalWorkQueue {
         int count = events.size();
         for (int index = 0; index < count && !stopped; index++) events.removeFirst().accept(batch);
         drainReady(batch);
-        boolean hasNext = !roots.isEmpty() || !streams.isEmpty();
+        boolean hasNext = !roots.isEmpty() || !streams.isEmpty() || pendingGroupFailures > 0;
         if (stopped || batch.isEmpty() && hasNext) return null;
         if (!hasNext) retire();
         return batch.toResult(hasNext);
@@ -91,7 +92,14 @@ public final class IncrementalWorkQueue {
 
     private void cancelRecords() {
         Set<DeferredTask> tasks = new LinkedHashSet<>();
-        groupRecords.values().forEach(record -> tasks.addAll(record.tasks));
+        Deque<DeliveryGroup> stack = new ArrayDeque<>();
+        pushReverse(stack, new ArrayList<>(roots));
+        while (!stack.isEmpty()) {
+            GroupRecord record = groupRecords.get(stack.pop());
+            if (record == null) continue;
+            tasks.addAll(record.tasks);
+            pushReverse(stack, record.children);
+        }
         tasks.forEach(this::disposeTask);
         new ArrayList<>(streams).forEach(ItemStream::cancel);
         retire();
@@ -107,6 +115,7 @@ public final class IncrementalWorkQueue {
         taskRecords.clear();
         failedGroups.clear();
         events.clear();
+        pendingGroupFailures = 0;
         initialPending.clear();
         mapper.finish();
     }
@@ -120,17 +129,18 @@ public final class IncrementalWorkQueue {
         IntegratedWork integrated = new IntegratedWork();
         List<DeliveryGroup> groups = work.getGroups();
         Set<DeliveryGroup> declared = new LinkedHashSet<>(groups);
-        groups.forEach(group -> addGroup(group, declared, integrated, producer));
+        Set<DeliveryGroup> visited = new LinkedHashSet<>();
+        groups.forEach(group -> addGroup(group, declared, visited, integrated, producer));
         work.getTasks().forEach(task -> addTask(task, integrated));
         addStreams(work.getStreams(), producer, integrated);
         work.adopt();
         return integrated;
     }
 
-    private void addGroup(DeliveryGroup group, Set<DeliveryGroup> declared, IntegratedWork integrated, @Nullable DeferredTask producer) {
+    private void addGroup(DeliveryGroup group, Set<DeliveryGroup> declared, Set<DeliveryGroup> visited, IntegratedWork integrated, @Nullable DeferredTask producer) {
         Deque<DeliveryGroup> stack = new ArrayDeque<>();
         DeliveryGroup current = group;
-        while (current != null && !groupRecords.containsKey(current) && !failedGroups.contains(current)) {
+        while (current != null && !groupRecords.containsKey(current) && !failedGroups.contains(current) && visited.add(current)) {
             stack.push(current);
             DeliveryGroup parent = current.getParent();
             current = declared.contains(parent) ? parent : null;
@@ -140,11 +150,11 @@ public final class IncrementalWorkQueue {
 
     private void installGroup(DeliveryGroup group, IntegratedWork integrated, @Nullable DeferredTask producer) {
         DeliveryGroup parent = group.getParent();
-        if (failedGroups.contains(parent)) { failedGroups.add(group); return; }
+        if (parent != null && !groupRecords.containsKey(parent)) { failedGroups.add(group); return; }
         groupRecords.put(group, new GroupRecord());
         GroupRecord parentRecord = groupRecords.get(parent);
         if (parentRecord != null) parentRecord.children.add(group);
-        else if (producer == null) integrated.groups.add(group);
+        else if (producer == null && parent == null) integrated.groups.add(group);
     }
 
     private void addTask(DeferredTask task, IntegratedWork integrated) {
@@ -154,9 +164,10 @@ public final class IncrementalWorkQueue {
             GroupRecord record = groupRecords.get(owner);
             if (record == null) continue;
             registered = true;
-            record.tasks.add(task);
-            record.pending++;
-            if (!record.failed) ready.remove(owner);
+            if (record.tasks.add(task)) {
+                record.pending++;
+                ready.remove(owner);
+            }
             active |= roots.contains(owner);
         }
         if (active) integrated.activeTasks.add(task);
@@ -180,7 +191,7 @@ public final class IncrementalWorkQueue {
     private void pruneGroup(DeliveryGroup group, Deque<DeliveryGroup> stack, List<DeliveryGroup> result) {
         GroupRecord record = groupRecords.get(group);
         if (record == null) return;
-        if (!record.tasks.isEmpty() || record.failed) { result.add(group); return; }
+        if (!record.tasks.isEmpty()) { result.add(group); return; }
         groupRecords.remove(group);
         ready.remove(group);
         pushReverse(stack, record.children);
@@ -193,7 +204,7 @@ public final class IncrementalWorkQueue {
     private void addRoot(DeliveryGroup group) {
         roots.add(group);
         GroupRecord record = groupRecords.get(group);
-        if (record.pending == 0 || record.failed) ready.add(group);
+        if (record.pending == 0) ready.add(group);
     }
 
     private void startNew(IntegratedWork integrated, IncrementalBatch batch) {
@@ -209,8 +220,35 @@ public final class IncrementalWorkQueue {
 
     private void startGroup(DeliveryGroup group) {
         GroupRecord record = groupRecords.get(group);
-        if (record == null || record.failed || stopped) return;
+        if (record == null || stopped) return;
+        List<List<GraphQLError>> failures = cachedFailures(record);
+        if (!failures.isEmpty()) {
+            List<GraphQLError> errors = new ArrayList<>();
+            failures.forEach(errors::addAll);
+            removeGroup(group);
+            pendingGroupFailures++;
+            dispatch(() -> receiveGroupFailure(group, List.copyOf(errors)));
+            return;
+        }
         new ArrayList<>(record.tasks).forEach(this::startTask);
+    }
+
+    private List<List<GraphQLError>> cachedFailures(GroupRecord group) {
+        List<List<GraphQLError>> failures = new ArrayList<>();
+        for (DeferredTask task : group.tasks) {
+            List<GraphQLError> rejection = taskRecords.containsKey(task) ? task.getRejection() : null;
+            if (rejection != null) failures.add(rejection);
+        }
+        return failures;
+    }
+
+    private void receiveGroupFailure(DeliveryGroup group, List<GraphQLError> errors) {
+        if (stopped) return;
+        events.add(batch -> {
+            pendingGroupFailures--;
+            batch.completed.add(mapper.completed(group, errors));
+        });
+        publisher.pump();
     }
 
     private void startTask(DeferredTask task) {
@@ -224,27 +262,15 @@ public final class IncrementalWorkQueue {
             if (result != null) result.getWork().dispose();
             return;
         }
-        if (exception != null) { fail(exception); return; }
-        events.add(batch -> taskCompleted(task, result, batch));
+        WorkResult outcome = exception == null ? result : new WorkResult(null, IncrementalErrors.from(exception, task.getPath()), new IncrementalWork(), true);
+        events.add(batch -> taskCompleted(task, outcome, batch));
         publisher.pump();
-    }
-
-    private boolean healthy(DeliveryGroup group) {
-        DeliveryGroup current = group;
-        while (current != null) {
-            if (failedGroups.contains(current)) return false;
-            GroupRecord record = groupRecords.get(current);
-            if (record != null && record.failed) return false;
-            current = current.getParent();
-        }
-        return groupRecords.containsKey(group);
     }
 
     private void taskCompleted(DeferredTask task, WorkResult result, IncrementalBatch batch) {
         TaskRecord record = taskRecords.get(task);
         if (record == null) { result.getWork().dispose(); return; }
-        if (task.getGroups().stream().noneMatch(this::healthy)) { disposeTask(task); removeTask(task); return; }
-        if (result.isFailed()) { taskFailed(task, result.getErrors(), batch); return; }
+        if (result.isFailed()) { taskFailed(task, result.getDeliveryErrors(), batch); return; }
         record.result = result;
         IntegratedWork integrated = integrate(result.getWork(), task);
         for (DeliveryGroup owner : task.getGroups()) completeOwner(owner, batch);
@@ -256,21 +282,17 @@ public final class IncrementalWorkQueue {
         GroupRecord record = groupRecords.get(group);
         if (record == null) return;
         record.pending--;
-        if (roots.contains(group) && record.pending == 0 && !record.failed) finishGroup(group, batch);
+        if (roots.contains(group) && record.pending == 0) finishGroup(group, batch);
     }
 
     private void taskFailed(DeferredTask task, List<GraphQLError> errors, IncrementalBatch batch) {
-        removeTask(task);
         for (DeliveryGroup group : task.getGroups()) failOwner(group, errors, batch);
     }
 
     private void failOwner(DeliveryGroup group, List<GraphQLError> errors, IncrementalBatch batch) {
         GroupRecord record = groupRecords.get(group);
         if (record == null) return;
-        if (roots.contains(group)) { failGroup(group, errors, batch); return; }
-        record.pending--;
-        record.failed = true;
-        record.errors.addAll(errors);
+        if (roots.contains(group)) failGroup(group, errors, batch);
     }
 
     private void drainReady(IncrementalBatch batch) {
@@ -279,8 +301,7 @@ public final class IncrementalWorkQueue {
             ready.remove(group);
             GroupRecord record = groupRecords.get(group);
             if (record == null) continue;
-            if (record.failed) failGroup(group, record.errors, batch);
-            else finishGroup(group, batch);
+            finishGroup(group, batch);
         }
     }
 
@@ -328,13 +349,14 @@ public final class IncrementalWorkQueue {
     private void disposeIfOwnerless(DeferredTask task) {
         if (task.getGroups().stream().anyMatch(groupRecords::containsKey)) return;
         disposeTask(task);
-        removeTask(task);
+        taskRecords.remove(task);
     }
 
     private void disposeTask(DeferredTask task) {
         TaskRecord record = taskRecords.get(task);
-        task.abort();
-        if (record != null) record.streams.forEach(ItemStream::cancel);
+        List<ItemStream> held = record == null ? Collections.emptyList() : List.copyOf(record.streams);
+        if (task.getRejection() == null) task.abort();
+        held.forEach(ItemStream::cancel);
     }
 
     private void removeTask(DeferredTask task) {

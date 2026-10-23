@@ -6,6 +6,7 @@ import Proofs.GraphQL.IncrementalDelivery.WorkQueueAlternativeImpl.ScheduledExec
 
 /-! JSON-lines adapter. Execution, queue transitions, and wire mapping are imported
 unchanged from the supplied Lean model; only decoding, serialization, and replay live here.
+TaskOutcome.deliveryResult selects delivery causes while retaining collected diagnostics.
 The eager public policy stays the default. The separately proved finite sequential
 cut policy is selected explicitly; neither executor is implemented in this adapter. -/
 namespace NativeOracle
@@ -170,32 +171,53 @@ partial def work (w : Work) (address : List Nat := []) : Json :=
   match w with
   | .empty => obj [("kind", str "empty")]
   | .combine l r => obj [("kind", str "combine"), ("left", work l (address ++ [0])), ("right", work r (address ++ [1]))]
-  | .executionGroup groups p r children => obj [
+  | .declareGroups groups tasks => obj [
+      ("kind", str "declare"),
+      ("groups", arr (groups.map fun g => obj [("node", descriptor g.node), ("ancestors", arr (g.ancestors.map descriptor))])),
+      ("children", work tasks address)]
+  | .executionGroup groups p outcome children => obj [
       ("kind", str "task"), ("address", toJson address), ("path", path p),
       ("groups", arr (groups.map fun g => obj [("node", descriptor g.node), ("ancestors", arr (g.ancestors.map descriptor))])),
-      ("result", result (fun fields => responseValue (.object fields)) r),
+      ("result", result (fun fields => responseValue (.object fields)) outcome.deliveryResult),
       ("children", work children (address ++ [0]))]
   | .stream node items => obj [
       ("kind", str "stream"), ("address", toJson address), ("node", descriptor node),
       ("items", arr ((items.zipIdx).map fun ((r, children), i) => obj [
-        ("result", result responseValue r), ("children", work children (address ++ [i]))]))]
+        ("result", result responseValue r.deliveryResult), ("children", work children (address ++ [i]))]))]
 
 partial def taskAt (w : Work) (address target : List Nat) : Option (List DeferredFragment × ResponsePath × Result (List (Name × ResponseValue))) :=
   match w with
   | .empty => none
   | .combine l r => (taskAt l (address ++ [0]) target).orElse fun _ => taskAt r (address ++ [1]) target
-  | .executionGroup gs p r children => if address == target then some (gs, p, r) else taskAt children (address ++ [0]) target
+  | .declareGroups _ tasks => taskAt tasks address target
+  | .executionGroup gs p r children => if address == target then some (gs, p, r.deliveryResult) else taskAt children (address ++ [0]) target
   | .stream _ items => (items.zipIdx).findSome? fun (item, i) => taskAt item.2 (address ++ [i]) target
 
 partial def streamAt (w : Work) (address target : List Nat) : Option (DeliveryNode × List (Result ResponseValue × Work)) :=
   match w with
   | .empty => none
   | .combine l r => (streamAt l (address ++ [0]) target).orElse fun _ => streamAt r (address ++ [1]) target
+  | .declareGroups _ tasks => streamAt tasks address target
   | .executionGroup _ _ _ children => streamAt children (address ++ [0]) target
-  | .stream n items => if address == target then some (n, items) else
+  | .stream n items => if address == target then some (n, items.map fun (r, w) => (r.deliveryResult, w)) else
       (items.zipIdx).findSome? fun (item, i) => streamAt item.2 (address ++ [i]) target
 
+partial def groupAt (w : Work) (ref : NodeRef) : Option DeliveryNode :=
+  match w with
+  | .empty => none
+  | .combine l r => (groupAt l ref).orElse fun _ => groupAt r ref
+  | .declareGroups gs tasks =>
+      ((gs.find? fun g => g.node.ref == ref).map DeferredFragment.node).orElse fun _ => groupAt tasks ref
+  | .executionGroup gs _ _ children =>
+      ((gs.find? fun g => g.node.ref == ref).map DeferredFragment.node).orElse fun _ => groupAt children ref
+  | .stream _ items => items.findSome? fun item => groupAt item.2 ref
+
 def event (w : Work) (j : Json) : Except String ReferenceWorkQueue.GraphEvent := do
+  if (← text j "kind") == "group-failure" then
+    let ref ← j.getObjValAs? Nat "group"
+    let errors ← j.getObjValAs? Nat "errors"
+    let some node := groupAt w ref | throw "unknown group"
+    return .groupFailure { group := node, errors }
   let address ← j.getObjValAs? (List Nat) "address"
   if (← text j "kind") == "task" then
     let some (gs, p, r) := taskAt w [] address | throw "unknown task"
@@ -230,16 +252,20 @@ partial def streamByRef (w : Work) (ref : Nat) (address : List Nat := []) :
   match w with
   | .empty => none
   | .combine l r => (streamByRef l ref (address ++ [0])).orElse fun _ => streamByRef r ref (address ++ [1])
+  | .declareGroups _ tasks => streamByRef tasks ref address
   | .executionGroup _ _ _ children => streamByRef children ref (address ++ [0])
-  | .stream node items => if node.ref == ref then some (address, node, items) else
+  | .stream node items => if node.ref == ref then some (address, node, items.map fun (outcome, children) => (outcome.deliveryResult, children)) else
       (items.zipIdx).findSome? fun (item, i) => streamByRef item.2 ref (address ++ [i])
 
 def nextAutomaticInput (w : Work) (state : A) (cursors : List (Nat × Nat)) :
     Except String (Json × List (Nat × Nat)) := do
-  if let some task := state.queue.taskNodes.find? (fun task => task.value.isNone) then
+  if let some task := state.queue.taskNodes.find? (fun task => task.value.isNone && task.rejection.isNone) then
     match task.task.occurrence with
     | .executionGroup address => return (obj [("kind", str "task"), ("address", toJson address)], cursors)
     | _ => throw "unexpected non-task occurrence"
+  if let some failure := state.queue.groupFailureEvents.head? then
+    return (obj [("kind", str "group-failure"), ("group", num failure.group.ref),
+      ("errors", num failure.errors)], cursors)
   let some ref := state.queue.rootStreams.head? | throw "no eligible model input"
   let some (address, _, items) := streamByRef w ref | throw "unknown model stream"
   let index := ((cursors.find? (fun pair => pair.1 == ref)).map Prod.snd).getD 0
@@ -256,7 +282,7 @@ def automaticSchedule (w : Work) (initial : A) : Except String (List Json) := do
   let mut cursors := []
   let mut schedule := []
   for _ in List.range 4096 do
-    if state.stopped || (state.queue.rootGroups.isEmpty && state.queue.rootStreams.isEmpty) then return schedule
+    if state.stopped || (state.queue.rootGroups.isEmpty && state.queue.rootStreams.isEmpty && state.queue.groupFailureEvents.isEmpty) then return schedule
     let (json, nextCursors) ← nextAutomaticInput w state cursors
     let input ← event w json
     if !state.queue.acceptsBatch [input] then throw "automatic schedule is not admissible"
@@ -286,9 +312,10 @@ def stateFacts (s : A) : Json := obj [
   ("stopped", toJson s.stopped), ("rootGroups", toJson s.queue.rootGroups), ("rootStreams", toJson s.queue.rootStreams),
   ("groups", arr (s.queue.groupNodes.map fun n => obj [
     ("key", num n.group.node.ref), ("children", toJson n.childGroups), ("tasks", arr (n.tasks.map occurrence)),
-    ("pending", num n.pending), ("errors", num (n.failure.getD 0))])),
+    ("pending", num n.pending)])),
   ("tasks", arr (s.queue.taskNodes.map fun n => obj [
-    ("occurrence", occurrence n.task.occurrence), ("value", n.value.map groupValue |>.getD .null), ("childStreams", toJson n.childStreams)]))]
+    ("occurrence", occurrence n.task.occurrence), ("value", n.value.map groupValue |>.getD .null), ("childStreams", toJson n.childStreams), ("rejection", n.rejection.map num |>.getD .null)])),
+  ("groupFailures", arr (s.queue.groupFailureEvents.map fun f => obj [("group", num f.group.ref), ("errors", num f.errors)]))]
 
 def run (j : Json) : Except String Json := do
   if (← j.getObjValAs? Nat "version") != 3 then throw "unsupported native oracle protocol"
