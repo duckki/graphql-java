@@ -1,0 +1,61 @@
+{
+  "format": 1,
+  "fixtureName": "initial-and-streamed-cause",
+  "input": {
+    "seed": 0,
+    "selections": [
+      {
+        "kind": "field",
+        "name": "a",
+        "responseName": "initial",
+        "selections": [],
+        "directives": []
+      },
+      {
+        "kind": "field",
+        "name": "strictUsers",
+        "responseName": "strictUsers",
+        "selections": [
+          {
+            "kind": "field",
+            "name": "name",
+            "responseName": "name",
+            "selections": [],
+            "directives": []
+          },
+          {
+            "kind": "field",
+            "name": "required",
+            "responseName": "required",
+            "selections": [],
+            "directives": []
+          }
+        ],
+        "directives": [
+          {
+            "name": "stream",
+            "if": true,
+            "initialCount": 0,
+            "label": "failure"
+          }
+        ]
+      }
+    ],
+    "root": {
+      "__typename": "Query",
+      "a": {
+        "$error": true
+      },
+      "strictUsers": [
+        {
+          "__typename": "Item",
+          "name": {
+            "$error": true
+          },
+          "required": null
+        }
+      ]
+    },
+    "variables": {}
+  }
+}

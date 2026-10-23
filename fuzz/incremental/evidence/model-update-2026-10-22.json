@@ -1,0 +1,184 @@
+{
+  "format": 1,
+  "date": "2026-10-22",
+  "scope": "Updated Lean model port across the four local review branches",
+  "modelCommit": "aa3f4ee870c7b865b81720aa672d9052a27b3695",
+  "jsReferenceCommit": "35d39bff448224cf16c4232b98df3849e234687a",
+  "javaSourceSha256": "dd346908e5c8a26f978007d34783e511d4b23857624175e3449da0233aead2bb",
+  "harnessSha256": "c7049ebb3e55b0f7612a8015c3da46712414f2b79489644b9c07ced4df596883",
+  "oracleSourceSha256": "15acdcd544cb73abdf5cb6f9613d117bdfde8f76c3f0f6191f49e19e51005cd6",
+  "leanBuild": "lake build GraphQL.IncrementalDelivery.WorkQueueAlternativeImpl Proofs.GraphQL.IncrementalDelivery.WorkQueueAlternativeImpl.ScheduledExecutor: passed (12 jobs)",
+  "ciCampaign": {
+    "status": "passed",
+    "profile": "ci",
+    "seed": 1,
+    "generated": 2000,
+    "inputs": 2038,
+    "comparisons": 16304,
+    "hostChecks": 100,
+    "faultChecks": 352,
+    "validationChecks": 128,
+    "exceptionalItemChecks": 4,
+    "elapsedSeconds": 65.192153667,
+    "sentinelDetected": true
+  },
+  "nightlyBoundsSample": {
+    "status": "passed",
+    "profile": "nightly",
+    "seed": 4294967250,
+    "generated": 250,
+    "inputs": 288,
+    "comparisons": 2304,
+    "hostChecks": 100,
+    "faultChecks": 360,
+    "validationChecks": 128,
+    "exceptionalItemChecks": 4,
+    "elapsedSeconds": 23.219129125,
+    "sentinelDetected": true
+  },
+  "coverage": {
+    "package": "graphql.execution.incremental.v2",
+    "executionData": "CI incremental-fuzz.exec only; excludes Spock coverage",
+    "counters": {
+      "BRANCH": {
+        "covered": 441,
+        "missed": 93
+      },
+      "LINE": {
+        "covered": 993,
+        "missed": 143
+      }
+    },
+    "addedSemanticBins": {
+      "wire.initial-and-completion-errors": 16,
+      "wire.empty-stream-completion": 1120
+    }
+  },
+  "focusedJava25": {
+    "tests": 129,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "branch1": {
+    "branch": "incremental-v2-01-defer",
+    "head": "f040fe034",
+    "fullJava25": {
+      "tests": 5834,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 8
+    },
+    "finalFocusedJava25": 63,
+    "packaging": "assemble check -x testng javadoc: passed"
+  },
+  "branch2": {
+    "branch": "incremental-v2-02-defer-oracle",
+    "head": "cb1afb9a1",
+    "focusedJava25": 66,
+    "differential": {
+      "format": 2,
+      "modelCommit": "aa3f4ee870c7b865b81720aa672d9052a27b3695",
+      "executionPolicy": "eager",
+      "scope": "defer",
+      "seed": 1,
+      "cases": 1000,
+      "status": "passed",
+      "javaSourceSha256": "e639417d21bb1ac55a6c3f02b9dc500cd486d498436a9bc20ddab112419c7623",
+      "harnessSha256": "e1ae7c87bdaa314afc61c936851f9740254a5617cb865c29a512cd4ebd975ab6",
+      "oracleSourceSha256": "15acdcd544cb73abdf5cb6f9613d117bdfde8f76c3f0f6191f49e19e51005cd6",
+      "sentinelDetected": true,
+      "inputs": 1016,
+      "exactComparisons": 4064,
+      "elapsedSeconds": 7.50246225
+    }
+  },
+  "branch3": {
+    "branch": "incremental-v2-03-stream",
+    "head": "4e7ab4d89",
+    "focusedJava25": 111,
+    "differential": {
+      "format": 2,
+      "modelCommit": "aa3f4ee870c7b865b81720aa672d9052a27b3695",
+      "executionPolicy": "eager",
+      "scope": "defer-and-stream",
+      "seed": 1,
+      "cases": 1000,
+      "status": "passed",
+      "javaSourceSha256": "dd346908e5c8a26f978007d34783e511d4b23857624175e3449da0233aead2bb",
+      "harnessSha256": "5fff05e3036184828046acea7e4902382f2da6dcc984c61af625e1bcd33fd2fc",
+      "oracleSourceSha256": "15acdcd544cb73abdf5cb6f9613d117bdfde8f76c3f0f6191f49e19e51005cd6",
+      "sentinelDetected": true,
+      "inputs": 1036,
+      "exactComparisons": 4144,
+      "elapsedSeconds": 10.2122035
+    },
+    "finalQueueFocusedRun": {
+      "tests": 10,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  },
+  "comparisonBoundary": "Exact initial data/counts and reconstructed final data/counts in the bounded common domain. Default Lean startup observation is asynchronous. Native cached rejection/FIFO/ownership schedules use Spock regressions, not an exact queue-state refinement proof.",
+  "publication": {
+    "pushed": false,
+    "pullRequestsCreated": false,
+    "history": "Merge updates forward; preserve public commits",
+    "backupBranch": "incremental-v2-backup-2026-10-22",
+    "backupHead": "b027b05de337c52068ad2f6c0c3dc14272e5118a"
+  },
+  "commands": {
+    "deferBranch": "./gradlew test assemble check -x testng javadoc; ./gradlew test --tests 'graphql.execution.incremental.v2.*'",
+    "oracleBranch": "./gradlew test --tests 'graphql.execution.incremental.v2.*' incrementalDifferentialFuzz -PleanProject=/path/to/graphql-lean -PfuzzCases=1000 -PfuzzSeed=1",
+    "streamBranch": "./gradlew test --tests 'graphql.execution.incremental.v2.*' incrementalDifferentialFuzz -PleanProject=/path/to/graphql-lean -PfuzzCases=1000 -PfuzzSeed=1",
+    "ci": "./gradlew test --tests 'graphql.execution.incremental.v2.*' incrementalDifferentialFuzz incrementalFuzzCoverageReport -PleanProject=/path/to/graphql-lean -PfuzzProfile=ci -PfuzzCoverage=true -PfuzzOutput=build/incremental-model-update-ci",
+    "nightlyBoundsSample": "./gradlew incrementalDifferentialFuzz -PleanProject=/path/to/graphql-lean -PfuzzProfile=nightly -PfuzzCases=250 -PfuzzHostCases=100 -PfuzzSeed=4294967250 -PfuzzOutput=build/incremental-model-update-nightly",
+    "fullAndRuntimeMatrix": "./gradlew test testng assemble check javadoc testWithJava11 --tests 'graphql.execution.incremental.v2.*' testWithJava17 --tests 'graphql.execution.incremental.v2.*' testWithJava21 --tests 'graphql.execution.incremental.v2.*'",
+    "deferProfile": "./gradlew incrementalDifferentialFuzz -PleanProject=/path/to/graphql-lean -PfuzzProfile=defer -PfuzzCases=1000 -PfuzzSeed=4294967250 -PfuzzOutput=build/incremental-model-update-defer-profile"
+  },
+  "finalRuntimeChecks": {
+    "test": {
+      "tests": 5901,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 8
+    },
+    "testng": {
+      "tests": 190,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 49
+    },
+    "testWithJava11": {
+      "tests": 129,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "testWithJava17": {
+      "tests": 129,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "testWithJava21": {
+      "tests": 129,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  },
+  "packaging": "assemble check javadoc: passed",
+  "deferProfile": {
+    "status": "passed",
+    "profile": "defer",
+    "seed": 4294967250,
+    "generated": 1000,
+    "inputs": 1017,
+    "comparisons": 4068,
+    "hostChecks": 0,
+    "elapsedSeconds": 10.311833875,
+    "sentinelDetected": true
+  }
+}

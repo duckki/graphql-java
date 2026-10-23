@@ -1,0 +1,60 @@
+{
+  "format": 1,
+  "fixtureName": "initial-and-deferred-cause",
+  "input": {
+    "seed": 0,
+    "selections": [
+      {
+        "kind": "field",
+        "name": "b",
+        "responseName": "initial",
+        "selections": [],
+        "directives": []
+      },
+      {
+        "kind": "fragment",
+        "selections": [
+          {
+            "kind": "field",
+            "name": "a",
+            "responseName": "first",
+            "selections": [],
+            "directives": []
+          },
+          {
+            "kind": "field",
+            "name": "a",
+            "responseName": "second",
+            "selections": [],
+            "directives": []
+          },
+          {
+            "kind": "field",
+            "name": "required",
+            "responseName": "required",
+            "selections": [],
+            "directives": []
+          }
+        ],
+        "directives": [
+          {
+            "name": "defer",
+            "if": true,
+            "label": "failure"
+          }
+        ]
+      }
+    ],
+    "root": {
+      "__typename": "Query",
+      "a": {
+        "$error": true
+      },
+      "b": {
+        "$error": true
+      },
+      "required": null
+    },
+    "variables": {}
+  }
+}

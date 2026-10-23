@@ -17,7 +17,8 @@ public final class FuzzSemanticCoverage {
     public static final String[] REQUIRED = {"wire.ordinary", "wire.initial-pending", "wire.multiple-pending", "wire.child-pending",
             "wire.defer-patch", "wire.stream-patch", "wire.patch-errors", "wire.completion-failure", "wire.null-items",
             "syntax.label.absent", "syntax.label.null", "syntax.label.string", "syntax.depth.6+", "syntax.nested-list",
-            "syntax.interface", "syntax.union", "wire.item-type-patch", "wire.other-type-patch"};
+            "syntax.interface", "syntax.union", "wire.item-type-patch", "wire.other-type-patch",
+            "wire.initial-and-completion-errors", "wire.empty-stream-completion"};
     private final ObjectMapper json = new ObjectMapper();
     public final ObjectNode bins = json.createObjectNode();
     public final ObjectNode witnesses = json.createObjectNode();
@@ -48,9 +49,35 @@ public final class FuzzSemanticCoverage {
         reached.add(initial.path("pending").isEmpty() ? "wire.ordinary" : "wire.initial-pending");
         if (initial.path("pending").size() > 1) reached.add("wire.multiple-pending");
         if (!initial.path("errors").isEmpty()) reached.add("wire.initial-errors");
+        deliveryBoundaries(comparison.actual, reached);
         for (JsonNode update : comparison.actual.path("updates")) update(update, reached);
         String witness = retain ? retain(input, comparison, mode, document, demand, reached) : null;
         for (String bin : reached) recordBin(bin, input, mode, document, demand, witness);
+    }
+
+    private void deliveryBoundaries(JsonNode result, Set<String> reached) {
+        JsonNode initial = result.path("initial");
+        Set<String> emptyStreams = new LinkedHashSet<>();
+        for (JsonNode pending : initial.path("pending")) {
+            if (atPath(initial.path("data"), pending.path("path")).isArray()) emptyStreams.add(pending.path("id").asText());
+        }
+        for (JsonNode update : result.path("updates")) {
+            for (JsonNode patch : update.path("incremental")) emptyStreams.remove(patch.path("id").asText());
+        }
+        for (JsonNode update : result.path("updates")) completionBoundaries(update, initial, emptyStreams, reached);
+    }
+
+    private void completionBoundaries(JsonNode update, JsonNode initial, Set<String> emptyStreams, Set<String> reached) {
+        for (JsonNode completed : update.path("completed")) {
+            if (!completed.path("errors").isEmpty() && !initial.path("errors").isEmpty()) reached.add("wire.initial-and-completion-errors");
+            if (completed.path("errors").isEmpty() && emptyStreams.contains(completed.path("id").asText())) reached.add("wire.empty-stream-completion");
+        }
+    }
+
+    private JsonNode atPath(JsonNode value, JsonNode path) {
+        JsonNode current = value;
+        for (JsonNode segment : path) current = segment.isIntegralNumber() ? current.path(segment.asInt()) : current.path(segment.asText());
+        return current;
     }
 
     private void syntax(JsonNode nodes, int depth, Set<String> reached) {

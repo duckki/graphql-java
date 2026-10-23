@@ -156,7 +156,7 @@ class IncrementalFuzzHarnessTest extends Specification {
         (0..9).every { coverage.bins.path('native.validation-negative.' + it).asInt() > 0 }
     }
 
-    def 'multi-failure cases preserve prior recorded errors and ordinary execution parity'() {
+    def 'multi-failure completion selects its cause while ordinary responses preserve diagnostics'() {
         given:
         def schema = new FuzzSchema('sync')
         def input = FuzzInput.fromJson(json.readTree(new File('fuzz/incremental/native-corpus/causal-error-order.json')).input)
@@ -166,7 +166,7 @@ class IncrementalFuzzHarnessTest extends Specification {
         faults.check(input)
 
         then:
-        faults.observation.incremental.updates[0].completed[0].errors*.path == [json.readTree('["a"]'), json.readTree('["required"]')]
+        faults.observation.incremental.updates[0].completed[0].errors*.path == [json.readTree('["required"]')]
         faults.observation.ordinaryV2.initial.errors.size() == 3
         faults.observation.ordinaryExisting.initial.errors.size() == 3
 
@@ -228,4 +228,32 @@ class IncrementalFuzzHarnessTest extends Specification {
                 '[{"completed":[{"id":"0"}],"hasNext":true}]'
         ]
     }
+    @Unroll
+    def 'initial diagnostics and failed delivery causes remain separate: #fixture'() {
+        given:
+        def input = FuzzInput.fromJson(json.readTree(new File('fuzz/incremental/corpus/' + fixture + '.json')).input)
+        def schemas = ['sync', 'promise', 'items', 'async'].collectEntries { [(it): new FuzzSchema(it)] }
+
+        expect:
+        schemas.values().every { schema ->
+            ['inline', 'named'].each { document ->
+                def checks = new FuzzFaultChecks(schema, document, 'one')
+                checks.check(input)
+                def result = checks.observation.incremental
+                assert result.initial.errors*.path == [json.readTree('["initial"]')]
+                assert result.updates.collectMany { it.completed.toList() }.collectMany { it.errors.toList() }*.path == [json.valueToTree(cause)]
+                assert checks.observation.ordinaryV2.initial.errors.size() == ordinaryErrors
+            }
+            true
+        }
+
+        cleanup:
+        schemas.values().each { it.close() }
+
+        where:
+        fixture                       | cause                          | ordinaryErrors
+        'initial-and-deferred-cause'   | ['required']                   | 4
+        'initial-and-streamed-cause'   | ['strictUsers', 0, 'required']  | 3
+    }
+
 }

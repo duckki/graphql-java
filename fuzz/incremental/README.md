@@ -3,13 +3,14 @@
 This target executes graphql-java independently against the supplied Lean executor and
 alternative queue. The original generator, oracle protocol and 31 semantic fixtures were
 adapted from `graphql-incremental-delivery-js/fuzz`; a further fixture preserves explicit
-null labels, and four more cover interfaces and unions. Java does not call the JavaScript executor. The enhanced generator and native
-property lanes address the gaps measured in the [coverage evaluation](evaluation.md).
+null labels, four more cover interfaces and unions, and two combine initial diagnostics
+with failed delivery causes. Java does not call the JavaScript executor. The enhanced
+generator and native property lanes address the gaps measured in the [coverage evaluation](evaluation.md).
 
 ## Profiles and commands
 
 Use a clean graphql-lean checkout at `aa3f4ee870c7b865b81720aa672d9052a27b3695`, with its
-imported libraries built and `lake` on PATH. The normal Java build has no Lean dependency.
+imported libraries built and Lean 4.35.0 (`lake`) on PATH. The normal Java build has no Lean dependency.
 There are no new dependencies; the optional target uses existing test-scoped Jackson and
 the project's existing JaCoCo plugin.
 
@@ -29,7 +30,7 @@ The enhanced profiles test four resolver representations and both inline and nam
 fragment documents: eight comparisons per input. Subscriber demand rotates deterministically
 among one update, bursts of three, and unbounded demand. `legacy` keeps the original
 synchronous/completed-future, inline-document, one-update-demand matrix for old seed replay.
-The 36 checked-in corpus cases run before generated inputs.
+The 38 checked-in corpus cases run before generated inputs.
 
 Useful overrides are `fuzzCases`, unsigned 32-bit `fuzzSeed`, `fuzzHostCases`,
 `fuzzResolvers=sync,promise,items,async`, `fuzzDocuments=inline,named`, and
@@ -82,7 +83,10 @@ thread interleaving.
 The oracle is one persistent process per campaign, pinned to the model commit and tracked-file
 cleanliness. It imports the actual Lean executor and queue; the adapter decodes inputs and
 selects an admissible finite task-first schedule through existing model transitions. The
-execution policy is explicitly eager. One modeled result is cached for the consecutive native
+execution policy is explicitly eager. The adapter projects `TaskOutcome.deliveryResult`,
+retains ordered declarations, and dispatches queued group-failure notices through the
+model transitions. Its default startup observation is asynchronous; native synchronous
+cache visibility and FIFO interleavings are covered by focused Spock tests. One modeled result is cached for the consecutive native
 variants of an identical IR; schemas are reused per resolver mode.
 
 Every common-domain query must validate. Comparisons require exact initial data and initial
@@ -115,8 +119,9 @@ and rejects duplicate paths within a delivery ID (shared owners may each report 
 Removing incremental directives then requires exact data, error counts and error-path
 multisets between the new and existing ordinary executors. A checked-in native corpus and
 Spock regression preserve the causal-order case and the earlier-nullable/later-fatal error
-pair. These checks do not assert that all eagerly modeled errors must execute, or prove
-that every asynchronous recording history is preserved. Reports count `faultChecks`
+pair. Failed completions contain the selected escaping cause; delivered caught-null
+patches and ordinary responses retain all collected diagnostics. These checks do not
+assert that all eagerly modeled errors must execute, or prove that every asynchronous recording history is preserved. Reports count `faultChecks`
 separately; they are native properties, not Lean comparisons.
 
 The first `fuzzHostCases` generated inputs also run with asynchronous resolvers, named
@@ -144,7 +149,8 @@ native property lanes. The normal Spock harness tests exercise these lanes witho
 Enhanced profiles require semantic bins for ordinary/incremental results, shared and child
 notices, defer/stream patches, scoped/fatal errors, null items, all label forms, deep selections
 and nested lists. Additional bins require interface/union syntax and observed patches for
-both concrete implementations. Sufficient cancellation campaigns also require all six host policies and
+both concrete implementations, an empty stream completion, and initial diagnostics
+coexisting with a fatal completion. Sufficient cancellation campaigns also require all six host policies and
 source closure. `fuzzRequireBins=false` disables these gates for a deliberately narrow run.
 Corpus-only and replay runs disable gates by default.
 

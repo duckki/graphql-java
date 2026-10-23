@@ -1,5 +1,31 @@
 # Incremental fuzzing evaluation
 
+## Updated Lean model (2026-10-22)
+
+The current port uses Lean `aa3f4ee8` and the JS port at `35d39bff` as a test
+reference. It separates collected diagnostics from escaping delivery causes, retains
+rejections for dormant owners, checks all available rejections before private task startup,
+and forwards cached failure notices at their FIFO position. Ordered declarations,
+last-owner cleanup, deep iterative cancellation and empty stream boundaries have focused
+regressions adapted from the JS tests.
+
+The new CI campaign passed **16,304 exact comparisons** from 2,000 generated inputs and
+38 corpus cases, plus 100 cancellation checks, 352 native fault checks, 128 validation
+pairs and four rejected-item checks. All corruption sentinels and semantic gates passed.
+The two new gates observed 16 initial-error/fatal-completion combinations and 1,120 empty
+stream completions. A further sample of 250 inputs at nightly bounds crossed unsigned
+seed wraparound and passed **2,304 exact comparisons**; it is not a full nightly campaign.
+
+Fuzz-only coverage of the updated execution package is **441/534 branches (82.6%)**
+and **993/1,136 lines (87.4%)**. Production code and its coverage denominator changed,
+so these measurements cannot isolate the effect of additional fuzz inputs. The focused
+suite passed all 129 regressions on Java 11, 17, 21 and 25. The full Java 25 suite
+ran 5,901 tests with no failures and eight expected skips. TestNG passed 141 tests with
+the exact 49 expected skips; assembly, shaded-consumer, annotation and Javadoc checks
+passed. Source hashes, commands and runtime checks are recorded in [model-update evidence](evidence/model-update-2026-10-22.json).
+
+The historical measurements below use the previous model and source revisions.
+
 The campaigns below describe the original implementation before the isolation refactor.
 They retain their original source hashes and coverage denominators. The local review
 stack uses separate v2 result implementations and extracted integration adapters;
