@@ -49,9 +49,11 @@ class IncrementalWorkQueueTest extends Specification {
 
         then:
         results[1].pending == [[id: '2', path: [], label: 'child']]
-        results[1].completed*.id == ['0', '2']
-        results[1].completed[1].errors*.message == ['shared failure']
-        !results[1].hasNext
+        results[1].completed*.id == ['0']
+        results[1].hasNext
+        results[2].completed*.id == ['2']
+        results[2].completed[0].errors*.message == ['shared failure']
+        !results[2].hasNext
     }
 
     def 'failed but live dormant owner protects a shared task until last owner is removed'() {

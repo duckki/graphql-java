@@ -14,6 +14,7 @@ public final class WorkResultBuilder {
     private List<GraphQLError> errors = Collections.emptyList();
     private IncrementalWork work = null;
     private boolean failed = false;
+    private List<GraphQLError> cause;
 
     public WorkResultBuilder value(Object value) {
         this.value = value;
@@ -35,7 +36,12 @@ public final class WorkResultBuilder {
         return this;
     }
 
+    public WorkResultBuilder cause(List<GraphQLError> cause) {
+        this.cause = cause;
+        return this;
+    }
+
     public WorkResult build() {
-        return new WorkResult(value, errors, work, failed);
+        return new WorkResult(value, errors, work, failed, cause);
     }
 }

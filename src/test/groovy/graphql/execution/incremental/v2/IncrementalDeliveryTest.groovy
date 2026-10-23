@@ -305,7 +305,7 @@ class IncrementalDeliveryTest extends Specification {
         result.pending.every { it.hasLabel() }
     }
 
-    def 'concurrent originating errors are retained once across a failed deferred scope'() {
+    def 'a failed deferred scope reports its escaping cause without duplicate bubbling errors'() {
         given:
         def selections = (0..<100).collect { "required${it}: required" }.join(' ')
         def result = execute("{ user { ... @defer { ${selections} } } }", [user: [:]],
@@ -315,8 +315,8 @@ class IncrementalDeliveryTest extends Specification {
         def updates = collect(result)
 
         then:
-        updates.last().completed[0].errors.size() == 100
-        updates.last().completed[0].errors*.path.toSet().size() == 100
+        updates.last().completed[0].errors.size() == 1
+        updates.last().completed[0].errors*.path == [['user', 'required0']]
         !updates.last().hasNext
     }
 
@@ -337,6 +337,54 @@ class IncrementalDeliveryTest extends Specification {
 
         then:
         subscriber.results.empty
+    }
+
+    def 'failed deferred data reports only the escaping cause: #asynchronous'() {
+        given:
+        def initialError = new IllegalStateException('initial diagnostic')
+        def prior = new IllegalStateException('prior nullable diagnostic')
+        def fatal = new CompletableFuture()
+        def query = '{ initial: hello user { id ... @defer { name required } } }'
+        def result = execute(query, [user: [id: '1']], [Query: [hello: { throw initialError }],
+                User: [name: { throw prior }, required: { asynchronous ? fatal : null }]])
+        def subscriber = new IncrementalTestSubscriber()
+        result.incrementalItemPublisher.subscribe(subscriber)
+
+        when:
+        if (asynchronous) fatal.completeExceptionally(new IllegalStateException('fatal'))
+        def updates = subscriber.awaitResults()
+
+        then:
+        result.errors*.path == [['initial']]
+        updates.collectMany { it.incremental ?: [] }.empty
+        updates.last().completed[0].errors*.path == [['user', 'required']]
+        !updates.last().hasNext
+
+        where:
+        asynchronous << [false, true]
+    }
+
+    def 'caught-null deferred data retains all collected diagnostics'() {
+        when:
+        def result = execute('{ ... @defer { user { name required } } }', [user: [:]],
+                [User: [name: { throw new IllegalStateException('nullable') }]])
+        def updates = collect(result)
+
+        then:
+        updates[0].incremental[0].data == [user: null]
+        updates[0].incremental[0].errors*.path == [['user', 'name'], ['user', 'required']]
+        !updates[0].completed[0].containsKey('errors')
+    }
+
+    def 'initial notices preserve immediate-child declarations before enclosing-plan declarations'() {
+        when:
+        def result = execute('{ user { id ... @defer(label: "inner") { name } } ... @defer(label: "outer") { hello } }',
+                [hello: 'hello', user: [id: '1', name: 'Ada']])
+        collect(result)
+
+        then:
+        result.pending*.label == ['inner', 'outer']
+        result.pending*.path == [['user'], []]
     }
 
 }

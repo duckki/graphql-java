@@ -39,7 +39,9 @@ public final class IncrementalExecution {
                 .withFields(fields, path);
     }
 
-    public CompletableFuture<ExecutionResult> complete(ExecutionContext context, CompletableFuture<ExecutionResult> result, IncrementalWork work) {
+    public CompletableFuture<ExecutionResult> complete(ExecutionContext context, CompletableFuture<ExecutionResult> result, IncrementalExecutionParameters parameters) {
+        parameters.declareGroups();
+        IncrementalWork work = parameters.getWork();
         return result.handle((value, exception) -> initialResult(context, work, value, exception))
                 .thenApply(initial -> buildResponse(context, initial, work));
     }
