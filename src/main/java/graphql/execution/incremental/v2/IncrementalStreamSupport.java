@@ -82,7 +82,7 @@ public final class IncrementalStreamSupport {
             while (index < initialCount && iterator.hasNext()) {
                 infos.add(completePrefix(parameters, iterator.next(), index++, completeItem));
             }
-            registerTail(context, parameters, iterator, index, label, labelPresent, resource, completeItem);
+            registerTail(context, parameters, iterator, index, initialCount, label, labelPresent, resource, completeItem);
         } catch (Exception exception) {
             close(resource);
             instrumentation.onCompleted(null, exception);
@@ -101,11 +101,11 @@ public final class IncrementalStreamSupport {
         return new FieldValueInfo(FieldValueInfo.CompleteValueType.OBJECT, result);
     }
 
-    private void registerTail(ExecutionContext context, ExecutionStrategyParameters parameters, Iterator<Object> iterator, int index,
+    private void registerTail(ExecutionContext context, ExecutionStrategyParameters parameters, Iterator<Object> iterator, int index, int initialCount,
                                @Nullable String label, boolean labelPresent, @Nullable AutoCloseable resource,
                                Function<ExecutionStrategyParameters, FieldValueInfo> completeItem) throws Exception {
         IncrementalExecutionParameters incremental = assertNotNull(parameters.getIncrementalExecutionParameters());
-        if (!iterator.hasNext()) { if (resource != null) resource.close(); return; }
+        if (index < initialCount) { if (resource != null) resource.close(); return; }
         ItemStream stream = new ItemStream(parameters.getPath(), label, labelPresent, iterator, index, resource, incremental.getWork(),
                 (raw, itemIndex, work) -> completeRemaining(context, parameters, raw, itemIndex, work, completeItem));
         incremental.getWork().addStream(stream);
@@ -131,7 +131,7 @@ public final class IncrementalStreamSupport {
             work.dispose();
             List<graphql.GraphQLError> reported = new ArrayList<>(errors.getErrors());
             if (reported.isEmpty()) reported.addAll(IncrementalErrors.from(exception, path));
-            return new WorkResult(null, reported, work, true);
+            return new WorkResult(null, reported, work, true, IncrementalErrors.deliveryCause(exception, reported, path));
         }
         work.filter(value, path);
         return new WorkResult(value, errors.getErrors(), work, false);

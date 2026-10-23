@@ -32,6 +32,7 @@ public final class IncrementalErrorSupport {
         AlternativeCallContext alternative = parameters.getAlternativeCallContext();
         if (parameters.getIncrementalExecutionParameters() == null || alternative == null
                 || parameters.getPath().getLevel() != alternative.getStartLevel() - 1) return false;
+        if (alternative instanceof StreamCallContext && !parameters.getExecutionStepInfo().isNonNullType()) return false;
         result.completeExceptionally(exception);
         return true;
     }

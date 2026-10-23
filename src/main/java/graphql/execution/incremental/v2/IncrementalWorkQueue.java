@@ -100,8 +100,11 @@ public final class IncrementalWorkQueue {
             tasks.addAll(record.tasks);
             pushReverse(stack, record.children);
         }
-        tasks.forEach(this::disposeTask);
-        new ArrayList<>(streams).forEach(ItemStream::cancel);
+        List<Runnable> cleanup = new ArrayList<>();
+        tasks.forEach(task -> cleanup.add(cancellation(task)));
+        List<ItemStream> sources = new ArrayList<>(streams);
+        cleanup.forEach(Runnable::run);
+        sources.forEach(ItemStream::cancel);
         retire();
     }
 
@@ -353,10 +356,16 @@ public final class IncrementalWorkQueue {
     }
 
     private void disposeTask(DeferredTask task) {
+        cancellation(task).run();
+    }
+
+    private Runnable cancellation(DeferredTask task) {
         TaskRecord record = taskRecords.get(task);
         List<ItemStream> held = record == null ? Collections.emptyList() : List.copyOf(record.streams);
-        if (task.getRejection() == null) task.abort();
-        held.forEach(ItemStream::cancel);
+        return () -> {
+            if (task.getRejection() == null) task.abort();
+            held.forEach(ItemStream::cancel);
+        };
     }
 
     private void removeTask(DeferredTask task) {
@@ -396,7 +405,7 @@ public final class IncrementalWorkQueue {
             stream.consumed();
             return;
         }
-        if (exception != null) events.add(batch -> finishStream(stream, IncrementalErrors.from(exception, stream.getPath()), batch));
+        if (exception != null) events.add(batch -> failStream(stream, exception, batch));
         else events.add(batch -> admitItem(stream, result, batch));
         publisher.pump();
     }
@@ -404,7 +413,7 @@ public final class IncrementalWorkQueue {
     private void admitItem(ItemStream stream, WorkResult result, IncrementalBatch batch) {
         try {
             if (stopped || !streams.contains(stream)) { result.getWork().dispose(); return; }
-            if (result.isFailed()) { stream.cancel(); finishStream(stream, result.getErrors(), batch); return; }
+            if (result.isFailed()) { stream.cancel(); finishStream(stream, result.getDeliveryErrors(), batch); return; }
             IntegratedWork integrated = integrate(result.getWork(), null);
             batch.incremental.add(mapper.streamed(stream, result));
             startNew(integrated, batch);
@@ -413,6 +422,14 @@ public final class IncrementalWorkQueue {
         }
         drainReady(batch);
         startStream(stream);
+    }
+
+    private void failStream(ItemStream stream, Throwable exception, IncrementalBatch batch) {
+        try {
+            finishStream(stream, IncrementalErrors.from(exception, stream.getPath()), batch);
+        } finally {
+            stream.consumed();
+        }
     }
 
     private void finishStream(ItemStream stream, List<GraphQLError> errors, IncrementalBatch batch) {

@@ -24,7 +24,7 @@ import java.util.concurrent.atomic.AtomicInteger
 @Timeout(10)
 class IncrementalDeliveryTest extends Specification {
     String sdl = '''
-        type Query { user: User users: [User] values: [Int] strict: [Int!] matrix: [[Int]] hello: String }
+        type Query { user: User users: [User] strictUsers: [User!] values: [Int] strict: [Int!] matrix: [[Int]] hello: String }
         type User { id: ID! name: String required: String! friend: User values: [Int] }
         type Mutation { update: User }
         type Subscription { event: User }
@@ -348,7 +348,7 @@ class IncrementalDeliveryTest extends Specification {
         then:
         result.data == [values: [1, 2, 3].take(count)]
         updates.collectMany { it.incremental ?: [] }.collectMany { it.items } == [1, 2, 3].drop(count)
-        if (count < 3) {
+        if (count <= 3) {
             assert result.pending*.path == [['values']]
             assert updates.last().completed == [[id: '0']]
             assert !updates.last().hasNext
@@ -656,6 +656,72 @@ class IncrementalDeliveryTest extends Specification {
         then:
         result.pending*.label == ['inner', 'outer']
         result.pending*.path == [['user'], []]
+    }
+
+    def 'empty stream boundaries remain work exactly at the initial count: #size #count'() {
+        given:
+        def source = new CloseableItems(values: (0..<size).toList())
+
+        when:
+        def result = execute('query($count: Int!) { values @stream(initialCount: $count) }', [values: source], [:], [count: count])
+        def updates = result instanceof IncrementalExecutionResult ? collect(result) : []
+
+        then:
+        (result instanceof IncrementalExecutionResult) == (count <= size)
+        result.data == [values: source.values.take(count)]
+        source.closed.get() == 1
+        if (count == size) assert updates == [[completed: [[id: '0']], hasNext: false]]
+
+        where:
+        size | count
+        0    | 0
+        0    | 1
+        2    | 2
+        2    | 3
+    }
+
+    def 'discarded streamed item reports the fatal cause and closes acquired children: #timing'() {
+        given:
+        def prior = new IllegalStateException('nullable diagnostic')
+        def fatal = new IllegalStateException('fatal cause')
+        def gate = new CompletableFuture()
+        def children = new CloseableItems(values: [1, 2])
+        def row = [id: '1', values: children]
+        def source = new CloseableItems(values: [timing == 'item' ? CompletableFuture.completedFuture(row) : row])
+        def result = execute('{ strictUsers @stream { values @stream name required } }', [strictUsers: source],
+                [User: [name: { throw prior }, required: { if (timing == 'async') return gate; throw fatal }]])
+        def subscriber = new IncrementalTestSubscriber()
+        result.incrementalItemPublisher.subscribe(subscriber)
+
+        when:
+        if (timing == 'async') gate.completeExceptionally(fatal)
+        def updates = subscriber.awaitResults()
+
+        then:
+        updates.collectMany { it.incremental ?: [] }.empty
+        updates.collectMany { it.pending ?: [] }.empty
+        updates.collectMany { it.completed ?: [] }.size() == 1
+        updates.last().completed[0].errors*.path == [['strictUsers', 0, 'required']]
+        updates.last().completed[0].errors[0].message.contains('fatal cause')
+        source.closed.get() == 1
+        children.closed.get() == 1
+        !updates.last().hasNext
+
+        where:
+        timing << ['sync', 'async', 'item']
+    }
+
+    def 'delivered null stream item retains nullable and fatal diagnostics'() {
+        when:
+        def result = execute('{ users @stream { name required } }', [users: [[:]]],
+                [User: [name: { throw new IllegalStateException('nullable') }]])
+        def updates = collect(result)
+        def patch = updates.collectMany { it.incremental ?: [] }.first()
+
+        then:
+        patch.items == [null]
+        patch.errors*.path == [['users', 0, 'name'], ['users', 0, 'required']]
+        updates.collectMany { it.completed ?: [] }.every { !it.containsKey('errors') }
     }
 
 }

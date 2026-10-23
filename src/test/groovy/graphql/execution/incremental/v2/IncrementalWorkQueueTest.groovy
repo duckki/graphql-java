@@ -180,4 +180,138 @@ class IncrementalWorkQueueTest extends Specification {
         starts.get() == 1
     }
 
+    def 'successful outcome is adopted while a rejected dormant co-owner remains live'() {
+        given:
+        def parent = new DeliveryGroup(null, path, 'parent')
+        def child = new DeliveryGroup(parent, path, 'child')
+        def other = new DeliveryGroup(null, path, 'other')
+        def failureOwner = new DeliveryGroup(null, path, 'failure')
+        def parentResult = new CompletableFuture<WorkResult>()
+        def producerResult = new CompletableFuture<WorkResult>()
+        def otherFailure = new CompletableFuture<WorkResult>()
+        def childFailure = new CompletableFuture<WorkResult>()
+        def held = new IncrementalWork()
+        def source = new CloseableItems(values: [1])
+        held.addStream(new ItemStream(path, null, source.iterator(), 0, source, held,
+                { raw, index, itemWork -> CompletableFuture.completedFuture(success([value: raw])) }))
+        def work = new IncrementalWork()
+        [parent, child, other, failureOwner].each { work.addGroup(it) }
+        work.addTask(task([parent], parentResult))
+        work.addTask(task([child, other], producerResult, held))
+        work.addTask(task([other], otherFailure))
+        work.addTask(task([child, failureOwner], childFailure))
+        def subscriber = new IncrementalTestSubscriber()
+        new IncrementalWorkQueue(work, {}).publisher.subscribe(subscriber)
+
+        when:
+        childFailure.complete(failure('child failed'))
+        otherFailure.complete(failure('other failed'))
+        producerResult.complete(success([held: true], held))
+
+        then:
+        source.closed.get() == 0
+        held.streams.empty
+        subscriber.results.collectMany { it.incremental ?: [] }.empty
+
+        when:
+        parentResult.complete(success([parent: true]))
+        def updates = subscriber.awaitResults()
+
+        then:
+        source.closed.get() == 1
+        updates.collectMany { it.incremental ?: [] }.every { !it.data.containsKey('held') }
+        updates.collectMany { it.completed ?: [] }*.id == ['2', '1', '0', '3']
+    }
+
+    def 'cancellation follows task-before-child depth-first order despite declaration order'() {
+        given:
+        def root = new DeliveryGroup(null, path, 'root')
+        def left = new DeliveryGroup(root, path, 'left')
+        def leaf = new DeliveryGroup(left, path, 'leaf')
+        def right = new DeliveryGroup(root, path, 'right')
+        def calls = []
+        def tasks = [root, left, leaf, right].withIndex().collect { owner, index ->
+            def held = new IncrementalWork()
+            def resource = { calls.add(index) } as AutoCloseable
+            held.addStream(new ItemStream(path, null, [].iterator(), 0, resource, held,
+                    { raw, itemIndex, itemWork -> CompletableFuture.completedFuture(success([unused: true])) }))
+            def computation = task([owner], new CompletableFuture<WorkResult>(), held)
+            computation.result()
+            computation
+        }
+        def work = new IncrementalWork()
+        [root, left, right, leaf].each { work.addGroup(it) }
+        tasks.each { work.addTask(it) }
+        def queue = new IncrementalWorkQueue(work, {})
+
+        when:
+        queue.cancel()
+
+        then:
+        calls == [0, 1, 2, 3]
+    }
+
+    def 'source failure preserves previously admitted child work'() {
+        given:
+        def child = new DeliveryGroup(null, path, 'child')
+        def result = new CompletableFuture<WorkResult>()
+        def source = new CloseableItems(values: [1, 2])
+        def work = new IncrementalWork()
+        def stream = new ItemStream(path.segment('values'), null, source.iterator(), 0, source, work,
+                { raw, index, itemWork ->
+                    if (index == 1) return CompletableFuture.completedFuture(failure('source failed'))
+                    itemWork.addGroup(child)
+                    itemWork.addTask(task([child], result))
+                    CompletableFuture.completedFuture(new WorkResult(raw, [], itemWork, false))
+                })
+        work.addStream(stream)
+        def subscriber = new IncrementalTestSubscriber()
+        new IncrementalWorkQueue(work, {}).publisher.subscribe(subscriber)
+        new spock.util.concurrent.PollingConditions(timeout: 5).eventually {
+            assert subscriber.results.collectMany { it.completed ?: [] }*.id == ['0']
+        }
+
+        when:
+        result.complete(success([child: true]))
+        def updates = subscriber.awaitResults()
+
+        then:
+        updates.collectMany { it.incremental ?: [] }.find { it.data == [child: true] }
+        updates.collectMany { it.completed ?: [] }*.id == ['0', '1']
+        source.closed.get() == 1
+        !updates.last().hasNext
+    }
+
+    def 'reentrant cancellation cannot erase later held-source cleanup targets'() {
+        given:
+        def owner = new DeliveryGroup(null, path, 'owner')
+        def failure = new CompletableFuture<WorkResult>()
+        def closed = [0, 0]
+        IncrementalWorkQueue queue
+        def work = new IncrementalWork()
+        work.addGroup(owner)
+        (0..1).each { index ->
+            def held = new IncrementalWork()
+            def resource = {
+                closed[index]++
+                if (index == 0) queue.cancel()
+            } as AutoCloseable
+            held.addStream(new ItemStream(path, null, [].iterator(), 0, resource, held,
+                    { raw, itemIndex, itemWork -> CompletableFuture.completedFuture(success([unused: true])) }))
+            work.addTask(task([owner], CompletableFuture.completedFuture(success([held: index], held)), held))
+        }
+        work.addTask(task([owner], failure))
+        queue = new IncrementalWorkQueue(work, {})
+        def subscriber = new IncrementalTestSubscriber()
+        queue.publisher.subscribe(subscriber)
+
+        when:
+        failure.complete(this.failure('failed'))
+
+        then:
+        queue.stopped
+        closed == [1, 1]
+        subscriber.results.empty
+    }
+
 }

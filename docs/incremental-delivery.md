@@ -88,7 +88,8 @@ published. Failed subtrees are removed iteratively, and last-owner removal dispo
 unpublished work during that walk. Failed ancestry cannot revive through late results.
 
 `@stream` affects the outermost list. It completes the initial prefix normally and
-completes subsequent items sequentially. Source pulls run independently of wire delivery. Sources use the engine's existing iterable and
+completes subsequent items sequentially. A prefix ending exactly at exhaustion retains
+an empty stream boundary; a prefix extending beyond exhaustion returns an ordinary list. Source pulls run independently of wire delivery. Sources use the engine's existing iterable and
 array representations; streamed items may also be `CompletableFuture` values. One
 original item may await graph admission per source. Admission acknowledges that item
 before advancing its source. Subscriber demand controls graph reduction, bounding
