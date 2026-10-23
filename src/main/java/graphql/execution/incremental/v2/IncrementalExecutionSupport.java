@@ -70,7 +70,9 @@ public final class IncrementalExecutionSupport implements DeferredExecutionSuppo
         if (exception != null && errors.getErrors().isEmpty()) errors.addErrors(IncrementalErrors.from(exception, parameters.getPath()));
         if (failed) work.dispose();
         else work.filter(value, parameters.getPath());
-        return new WorkResult(value, errors.getErrors(), work, failed);
+        List<graphql.GraphQLError> diagnostics = List.copyOf(errors.getErrors());
+        return new WorkResult(value, diagnostics, work, failed,
+                exception == null ? null : IncrementalErrors.deliveryCause(exception, diagnostics, parameters.getPath()));
     }
 
     @Override

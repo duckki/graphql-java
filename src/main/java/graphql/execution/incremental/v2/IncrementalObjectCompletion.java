@@ -25,6 +25,8 @@ public final class IncrementalObjectCompletion {
         ExecutionStepInfo step = parameters.getExecutionStepInfo().changeTypeWithPreservedNonNull(objectType);
         ExecutionStrategyParameters childParameters = parameters.transform(builder -> builder
                 .executionStepInfo(step).fields(fields.toMergedSelectionSet()).source(value).incrementalExecutionParameters(child));
-        return executeObject.apply(childParameters);
+        Object result = executeObject.apply(childParameters);
+        child.declareGroups();
+        return result;
     }
 }

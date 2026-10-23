@@ -268,7 +268,7 @@ public class Execution {
 
         result = result.whenComplete(executeOperationCtx::onCompleted);
 
-        if (incremental != null) return new IncrementalExecution().complete(executionContext, result, incremental.getWork());
+        if (incremental != null) return new IncrementalExecution().complete(executionContext, result, incremental);
         return incrementalSupport(executionContext, result);
     }
 

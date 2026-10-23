@@ -223,7 +223,7 @@ public abstract class ExecutionStrategy {
         Async.CombinedBuilder<FieldValueInfo> resolvedFieldFutures = getAsyncFieldValueInfo(executionContext, parameters, deferredExecutionSupport);
 
         CompletableFuture<Map<String, Object>> overallResult = new CompletableFuture<>();
-        BiConsumer<List<Object>, Throwable> handleResultsConsumer = buildFieldValueMap(fieldsExecutedOnInitialResult, overallResult, executionContext);
+        BiConsumer<List<Object>, Throwable> handleResultsConsumer = buildFieldValueMap(fieldsExecutedOnInitialResult, overallResult, executionContext, parameters);
 
         resolveObjectCtx.onDispatched();
 
@@ -351,7 +351,7 @@ public abstract class ExecutionStrategy {
         return executionContext.getGraphQLContext().get(CANCELLATION_FUTURE_KEY);
     }
 
-    private BiConsumer<List<Object>, Throwable> buildFieldValueMap(List<String> fieldNames, CompletableFuture<Map<String, Object>> overallResult, ExecutionContext executionContext) {
+    private BiConsumer<List<Object>, Throwable> buildFieldValueMap(List<String> fieldNames, CompletableFuture<Map<String, Object>> overallResult, ExecutionContext executionContext, ExecutionStrategyParameters parameters) {
         return (List<Object> results, Throwable exception) -> {
             exception = executionContext.possibleCancellation(exception);
 
@@ -364,6 +364,7 @@ public abstract class ExecutionStrategy {
                     completeFieldValueMap(overallResult, executionContext, fieldNames, results);
                     return;
                 }
+                if (graphql.execution.incremental.v2.IncrementalErrorSupport.propagate(parameters, overallResult, exception)) return;
                 handleValueException(overallResult, exception, executionContext);
                 return;
             }
@@ -950,6 +951,7 @@ public abstract class ExecutionStrategy {
                         overallResult.complete(partialResults);
                         return;
                     }
+                    if (graphql.execution.incremental.v2.IncrementalErrorSupport.propagate(parameters, overallResult, exception)) return;
                     handleValueException(overallResult, exception, executionContext);
                     return;
                 }
